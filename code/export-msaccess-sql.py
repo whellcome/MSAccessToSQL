@@ -36,6 +36,29 @@ class GetWigetsFrame(tk.Frame):
 
         self.__render_params = render_params
 
+        self.label1 = tk.Label(self, text="", font=("Helvetica", 12))
+        self.frame1 = ttk.Frame(self, width=100, borderwidth=1, relief="solid", padding=(2, 2))
+        self.create_widgets()
+
+    def render(self, obj=None, render_params=None):
+        """
+        Perform element creation and rendering in one command. Without creating a variable unnecessarily.
+        Combines general parameters for the arrangement of elements and parameters for a specific element.
+        :param obj: Element to rendering
+        :param render_params: Dictionary with element parameters
+        :return: Rendered element
+        """
+        if obj:
+            render_params = render_params if render_params else {}
+            united_pack_params = self.__render_params.copy()
+            united_pack_params.update(render_params)
+            obj.grid(united_pack_params)
+        return obj
+
+    def create_widgets(self):
+        """Building the main widgets at the beginning of program execution"""
+        self.render(self)
+
 
 if __name__ == "__main__":
     db_path = filedialog.askopenfilename(filetypes=[("MS Access files", "*.mdb, *.accdb")])
