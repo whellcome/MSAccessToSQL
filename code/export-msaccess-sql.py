@@ -35,7 +35,7 @@ class GetWigetsFrame(tk.Frame):
             render_params = dict(sticky="ew", padx=5, pady=2)
 
         self.__render_params = render_params
-
+        self.db_path = tk.StringVar(self, "")
         self.label1 = tk.Label(self, text="", font=("Helvetica", 12))
         self.frame1 = ttk.Frame(self, width=100, borderwidth=1, relief="solid", padding=(2, 2))
         self.create_widgets()
@@ -58,12 +58,44 @@ class GetWigetsFrame(tk.Frame):
     def create_widgets(self):
         """Building the main widgets at the beginning of program execution"""
         self.render(self)
+        self.render(tk.Label(self, text="MS Access to SQL Export Tool", font=("Helvetica", 14)),
+                    dict(row=0, column=0, columnspan=2, pady=5))
+        self.render(self.label1, dict(row=1, column=0, columnspan=3))
+        self.render(tk.Button(self, text="MS Access File Open", command=self.btn_openf), dict(row=2, column=0, columnspan=2))
+        self.render(tk.Button(self, text=" Exit ", command=self.quit), dict(row=2, column=2, columnspan=2))
+        self.render(tk.Label(self, text=" --------------------------------------------------------- "),
+                    dict(row=3, column=0, columnspan=3, pady=5))
+        self.render(tk.Button(self, text=" Run! ", command=self.btn_run, font=("Helvetica", 12)),
+                    dict(row=4, column=0, columnspan=3, ))
 
+    def recreate_widgets(self):
+        pass
 
-if __name__ == "__main__":
-    db_path = filedialog.askopenfilename(filetypes=[("MS Access files", "*.mdb, *.accdb")])
-    if db_path:
+    def btn_run(self):
+        """
+        Implementation of the "Show" button click event
+        Based on the form data, a dataframe is generated for plotting and sent for drawing.
+        In the case when the comparison mode is selected, a list with two dataframes is sent
+        """
+        self.export()
 
+    def btn_openf(self):
+        """
+        Implementation of the "File Open" button click event
+        After selecting a file, the data is loaded and cleared.
+        If successful, the program continues and loads elements for selecting plotting options
+        If unsuccessful, prompts to select another file or exit the program
+        """
+        db_path = filedialog.askopenfilename(filetypes=[("MS Access files", "*.mdb, *.accdb")])
+        self.db_path.set(db_path)
+        self.label1['text'] = f"MS Access database for export: \"{self.db_path.get().split('/')[-1]}\""
+        self.label1.update()
+        self.recreate_widgets()
+
+    def export(self):
+        db_path = self.db_path.get()
+        if not db_path:
+            return None
         engine = win32com.client.Dispatch("DAO.DBEngine.120")
         db = engine.OpenDatabase(db_path)
 
@@ -81,19 +113,19 @@ if __name__ == "__main__":
                         cNull = 'NOT NULL' if field.Required else ''
                         fSize = f"({field.Size})" if field.Size else ''
                         column_definitions.append(
-                            f" '{field.Name}'" 
+                            f" '{field.Name}'"
                             f" {dao_types.get(field.Type, 'Unknown')}{fSize}"
                             f" {cNull}"
                         )
 
                     relationships_query = """
-                    SELECT szObject AS FK_Table,
-                           szColumn AS FK_Column,
-                           szReferencedObject AS PK_Table,
-                           szReferencedColumn AS PK_Column
-                    FROM MSysRelationships
-                    WHERE szObject = ?
-                    """
+                            SELECT szObject AS FK_Table,
+                                   szColumn AS FK_Column,
+                                   szReferencedObject AS PK_Table,
+                                   szReferencedColumn AS PK_Column
+                            FROM MSysRelationships
+                            WHERE szObject = ?
+                            """
                     query_def = db.CreateQueryDef("", relationships_query)
                     query_def.Parameters(0).Value = table.Name
 
@@ -148,3 +180,12 @@ if __name__ == "__main__":
                         sql_file.write("\n);\n\n")
 
         print(f"SQL export completed. File saved as {output_sql_path}")
+
+
+
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    root.title("MS Access Export")
+    app = GetWigetsFrame(master=root, padx=20, pady=10)
+    app.mainloop()
