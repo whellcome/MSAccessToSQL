@@ -31,6 +31,7 @@ class GetWigetsFrame(tk.Frame):
         :param options:
         """
         super().__init__(*args, **options)
+        self.db = None
         if render_params is None:
             render_params = dict(sticky="ew", padx=5, pady=2)
 
@@ -41,8 +42,6 @@ class GetWigetsFrame(tk.Frame):
         self.tree = ttk.Treeview(self.frame1, columns=("table", "export", "data"), show="headings")
         self.scrollbar = ttk.Scrollbar(self.frame1, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=self.scrollbar.set)
-
-        self.make_tree()
         self.create_widgets()
 
     def render(self, obj=None, render_params=None):
@@ -64,7 +63,7 @@ class GetWigetsFrame(tk.Frame):
         """Building the main widgets at the beginning of program execution"""
         self.render(self)
         self.render(tk.Label(self, text="MS Access to SQL Export Tool", font=("Helvetica", 14)),
-                    dict(row=0, column=0, columnspan=2, pady=5))
+                    dict(row=0, column=0, columnspan=3, pady=5))
         self.render(self.label1, dict(row=1, column=0, columnspan=3))
         self.render(tk.Button(self, text="MS Access File Open", command=self.btn_openf), dict(row=2, column=0, columnspan=2))
         self.render(tk.Button(self, text=" Exit ", command=self.quit), dict(row=2, column=2, columnspan=2))
@@ -75,6 +74,8 @@ class GetWigetsFrame(tk.Frame):
                     dict(row=4, column=0, columnspan=3, ))
 
     def recreate_widgets(self):
+        self.render(self.tree, dict(row=0, column=0, pady=5))
+        self.render(self.scrollbar, dict(row=0, column=3, sticky="ns"))
         pass
     def make_tree(self):
 
@@ -82,22 +83,16 @@ class GetWigetsFrame(tk.Frame):
         self.tree.heading("export", text="Export")
         self.tree.heading("data", text="Upload")
 
-        # Настраиваем ширину колонок
         self.tree.column("table", width=150, anchor="w")
         self.tree.column("export", width=50, anchor="center")
         self.tree.column("data", width=50, anchor="center")
 
-        figures = ["Circle", "Square", "Triangle", "Rectangle", "Oval"]
-        for figure in figures:
-            self.tree.insert("", "end", values=(figure, " ", " "))
-        children = self.tree.get_children()
-        print(children)
-        for child in children:
-            print(self.tree.item(child, "values"))
+        for table in self.db.TableDefs:
+            if not table.Name.startswith("MSys"):
+                self.tree.insert("", "end", values=(table.Name, " ", " "))
 
         self.tree.grid(row=3, column=0, columnspan=3, pady=5)
-        # self.render(self.tree, dict(row=3, column=0, columnspan=3, pady=5))
-        # Настраиваем стиль для недоступных ячеек
+
         style = ttk.Style()
         style.map("Treeview",
                   background=[("disabled", "#c0c0c0"), ("selected", "#d9f2d9")],
@@ -105,10 +100,8 @@ class GetWigetsFrame(tk.Frame):
                  )
         style.configure("Treeview", rowheight=25)
 
-        # Обрабатываем клики по ячейкам
         self.tree.bind("<Button-1>", self.toggle_cell)
 
-        # Настраиваем теги для недоступных ячеек
         self.tree.tag_configure("normal")
         self.tree.tag_configure("export", background="#fff0f0")
 
@@ -132,12 +125,12 @@ class GetWigetsFrame(tk.Frame):
         col = tree.identify_column(event.x)
         item = tree.identify_row(event.y)
 
-        if col == "#2":  # Колонка "Red"
+        if col == "#2":
             current_value = tree.set(item, "export")
             tree.set(item, "export", " " if current_value == "✔" else "✔")
-        elif col == "#3":  # Колонка "Round"
+        elif col == "#3":
             current_value = tree.set(item, "data")
-            if tree.set(item, "export") == "✔":  # Проверяем, что "Red" уже отмечен
+            if tree.set(item, "export") == "✔":
                 tree.set(item, "data", " " if current_value == "✔" else "✔")
 
         self.update_data_column(None)
@@ -152,26 +145,31 @@ class GetWigetsFrame(tk.Frame):
     def btn_openf(self):
         """
         Implementation of the "File Open" button click event
-        After selecting a file, the data is loaded.
-
+        After selecting a file, the data can be loaded.
         """
         db_path = filedialog.askopenfilename(filetypes=[("MS Access files", "*.mdb, *.accdb")])
         self.db_path.set(db_path)
         self.label1['text'] = f"MS Access database for export: \"{self.db_path.get().split('/')[-1]}\""
         self.label1.update()
+        self.db_connect()
+        self.make_tree()
         self.recreate_widgets()
 
-    def export(self):
+    def db_connect(self):
         db_path = self.db_path.get()
         if not db_path:
             return None
         engine = win32com.client.Dispatch("DAO.DBEngine.120")
-        db = engine.OpenDatabase(db_path)
+        self.db = engine.OpenDatabase(db_path)
 
-        output_sql_path = "export_msaccess.sql"
+    def export(self):
+        expath = self.db_path.get().split('/')
+        fname = expath[-1]
+        catalog = "/".join(expath[:-1])
+        output_sql_path = f"{catalog}/{'_'.join(fname.split('.')[:-1])}.sql"
 
         with (open(output_sql_path, "w", encoding="utf-8") as sql_file):
-            for table in db.TableDefs:
+            for table in self.db.TableDefs:
                 if not table.Name.startswith("MSys"):
 
                     sql_file.write(f"-- Table: {table.Name}\n")
@@ -195,7 +193,7 @@ class GetWigetsFrame(tk.Frame):
                             FROM MSysRelationships
                             WHERE szObject = ?
                             """
-                    query_def = db.CreateQueryDef("", relationships_query)
+                    query_def = self.db.CreateQueryDef("", relationships_query)
                     query_def.Parameters(0).Value = table.Name
 
                     results = query_def.OpenRecordset()
@@ -226,7 +224,7 @@ class GetWigetsFrame(tk.Frame):
                         ref_columns = [field.Name for field in table.Fields]
                         sql_file.write(f"-- Filling data for {table.Name}\n")
                         sql_file.write(f"INSERT INTO '{table.Name}' ({', '.join(ref_columns)}) VALUES\n")
-                        recordset = db.OpenRecordset(f"SELECT * FROM [{table.Name}]")
+                        recordset = self.db.OpenRecordset(f"SELECT * FROM [{table.Name}]")
 
                         while not recordset.EOF:
                             values = []
