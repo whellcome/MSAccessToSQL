@@ -38,6 +38,11 @@ class GetWigetsFrame(tk.Frame):
         self.db_path = tk.StringVar(self, "")
         self.label1 = tk.Label(self, text="", font=("Helvetica", 12))
         self.frame1 = ttk.Frame(self, width=100, borderwidth=1, relief="solid", padding=(2, 2))
+        self.tree = ttk.Treeview(self.frame1, columns=("table", "export", "data"), show="headings")
+        self.scrollbar = ttk.Scrollbar(self.frame1, orient="vertical", command=self.tree.yview)
+        self.tree.configure(yscrollcommand=self.scrollbar.set)
+
+        self.make_tree()
         self.create_widgets()
 
     def render(self, obj=None, render_params=None):
@@ -63,28 +68,92 @@ class GetWigetsFrame(tk.Frame):
         self.render(self.label1, dict(row=1, column=0, columnspan=3))
         self.render(tk.Button(self, text="MS Access File Open", command=self.btn_openf), dict(row=2, column=0, columnspan=2))
         self.render(tk.Button(self, text=" Exit ", command=self.quit), dict(row=2, column=2, columnspan=2))
-        self.render(tk.Label(self, text=" --------------------------------------------------------- "),
-                    dict(row=3, column=0, columnspan=3, pady=5))
+        self.render(self.frame1,dict(row=3, column=0, columnspan=3))
+        self.render(self.tree, dict(row=0, column=0, pady=5))
+        self.render(self.scrollbar, dict(row=0, column=3, sticky="ns"))
         self.render(tk.Button(self, text=" Run! ", command=self.btn_run, font=("Helvetica", 12)),
                     dict(row=4, column=0, columnspan=3, ))
 
     def recreate_widgets(self):
         pass
+    def make_tree(self):
+
+        self.tree.heading("table", text="Table")
+        self.tree.heading("export", text="Export")
+        self.tree.heading("data", text="Upload")
+
+        # Настраиваем ширину колонок
+        self.tree.column("table", width=150, anchor="w")
+        self.tree.column("export", width=50, anchor="center")
+        self.tree.column("data", width=50, anchor="center")
+
+        figures = ["Circle", "Square", "Triangle", "Rectangle", "Oval"]
+        for figure in figures:
+            self.tree.insert("", "end", values=(figure, " ", " "))
+        children = self.tree.get_children()
+        print(children)
+        for child in children:
+            print(self.tree.item(child, "values"))
+
+        self.tree.grid(row=3, column=0, columnspan=3, pady=5)
+        # self.render(self.tree, dict(row=3, column=0, columnspan=3, pady=5))
+        # Настраиваем стиль для недоступных ячеек
+        style = ttk.Style()
+        style.map("Treeview",
+                  background=[("disabled", "#c0c0c0"), ("selected", "#d9f2d9")],
+                  foreground = [("selected", "#000000")]
+                 )
+        style.configure("Treeview", rowheight=25)
+
+        # Обрабатываем клики по ячейкам
+        self.tree.bind("<Button-1>", self.toggle_cell)
+
+        # Настраиваем теги для недоступных ячеек
+        self.tree.tag_configure("normal")
+        self.tree.tag_configure("export", background="#fff0f0")
+
+    def update_data_column(self, event):
+        """Обновляет возможность отметить 'круглая' только для отмеченных 'красная'."""
+
+        for item_id in self.tree.get_children():
+            is_red = self.tree.set(item_id, "export")
+            if is_red == "✔":
+                self.tree.item(item_id, tags=("export",))
+            else:
+                self.tree.item(item_id, tags=("normal",))
+
+    def toggle_cell(self, event):
+        """Обрабатывает клики по ячейкам для изменения флагов."""
+        tree = self.tree
+        region = tree.identify_region(event.x, event.y)
+        if region != "cell":
+            return
+
+        col = tree.identify_column(event.x)
+        item = tree.identify_row(event.y)
+
+        if col == "#2":  # Колонка "Red"
+            current_value = tree.set(item, "export")
+            tree.set(item, "export", " " if current_value == "✔" else "✔")
+        elif col == "#3":  # Колонка "Round"
+            current_value = tree.set(item, "data")
+            if tree.set(item, "export") == "✔":  # Проверяем, что "Red" уже отмечен
+                tree.set(item, "data", " " if current_value == "✔" else "✔")
+
+        self.update_data_column(None)
 
     def btn_run(self):
         """
-        Implementation of the "Show" button click event
-        Based on the form data, a dataframe is generated for plotting and sent for drawing.
-        In the case when the comparison mode is selected, a list with two dataframes is sent
+        Implementation of the "Run" button click event
+
         """
         self.export()
 
     def btn_openf(self):
         """
         Implementation of the "File Open" button click event
-        After selecting a file, the data is loaded and cleared.
-        If successful, the program continues and loads elements for selecting plotting options
-        If unsuccessful, prompts to select another file or exit the program
+        After selecting a file, the data is loaded.
+
         """
         db_path = filedialog.askopenfilename(filetypes=[("MS Access files", "*.mdb, *.accdb")])
         self.db_path.set(db_path)
