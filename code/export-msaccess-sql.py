@@ -134,11 +134,14 @@ class GetWigetsFrame(tk.Frame):
         if col == "#2":
             current_value = tree.set(item, "export")
             tree.set(item, "export", " " if current_value == "✔" else "✔")
+            if self.svars['check_all'].get() == 1:
+                if current_value == "✔":
+                    self.svars['check_all'].set(0)
+
         elif col == "#3":
             current_value = tree.set(item, "data")
             if tree.set(item, "export") == "✔":
                 tree.set(item, "data", " " if current_value == "✔" else "✔")
-
         self.update_data_column(None)
 
     def toggle_all(self):
