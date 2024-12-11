@@ -32,9 +32,9 @@ class GetWigetsFrame(tk.Frame):
         """
         super().__init__(*args, **options)
         self.db = None
+        self.svars = {}
         if render_params is None:
             render_params = dict(sticky="ew", padx=5, pady=2)
-
         self.__render_params = render_params
         self.db_path = tk.StringVar(self, "")
         self.label1 = tk.Label(self, text="", font=("Helvetica", 12))
@@ -65,18 +65,24 @@ class GetWigetsFrame(tk.Frame):
         self.render(tk.Label(self, text="MS Access to SQL Export Tool", font=("Helvetica", 14)),
                     dict(row=0, column=0, columnspan=3, pady=5))
         self.render(self.label1, dict(row=1, column=0, columnspan=3))
-        self.render(tk.Button(self, text="MS Access File Open", command=self.btn_openf), dict(row=2, column=0, columnspan=2))
+        self.render(tk.Button(self, text="MS Access File Open", command=self.btn_openf),
+                    dict(row=2, column=0, columnspan=2))
         self.render(tk.Button(self, text=" Exit ", command=self.quit), dict(row=2, column=2, columnspan=2))
-        self.render(self.frame1,dict(row=3, column=0, columnspan=3))
+        self.frame0 = ttk.Frame(self, width=100, borderwidth=1, relief="solid", padding=(2, 2))
+        self.render(self.frame0, dict(row=3, column=0, columnspan=3))
+        self.render(self.frame1,dict(row=4, column=0, columnspan=3))
         self.render(self.tree, dict(row=0, column=0, pady=5))
         self.render(self.scrollbar, dict(row=0, column=3, sticky="ns"))
         self.render(tk.Button(self, text=" Run! ", command=self.btn_run, font=("Helvetica", 12)),
-                    dict(row=4, column=0, columnspan=3, ))
+                    dict(row=5, column=0, columnspan=3, ))
 
     def recreate_widgets(self):
         self.render(self.tree, dict(row=0, column=0, pady=5))
         self.render(self.scrollbar, dict(row=0, column=3, sticky="ns"))
-        pass
+        self.svars['check_all'] = tk.IntVar(value=0)
+        self.render(ttk.Checkbutton(self.frame0, text="Check all to Export", variable=self.svars['check_all'],
+                                    command=self.toggle_all), dict(row=0, column=1, padx=2))
+
     def make_tree(self):
 
         self.tree.heading("table", text="Table")
@@ -106,7 +112,7 @@ class GetWigetsFrame(tk.Frame):
         self.tree.tag_configure("export", background="#fff0f0")
 
     def update_data_column(self, event):
-        """Обновляет возможность отметить 'круглая' только для отмеченных 'красная'."""
+        """..."""
 
         for item_id in self.tree.get_children():
             is_red = self.tree.set(item_id, "export")
@@ -116,7 +122,7 @@ class GetWigetsFrame(tk.Frame):
                 self.tree.item(item_id, tags=("normal",))
 
     def toggle_cell(self, event):
-        """Обрабатывает клики по ячейкам для изменения флагов."""
+        """Handles cell clicks to change flags."""
         tree = self.tree
         region = tree.identify_region(event.x, event.y)
         if region != "cell":
@@ -135,16 +141,26 @@ class GetWigetsFrame(tk.Frame):
 
         self.update_data_column(None)
 
+    def toggle_all(self):
+        checked = self.svars['check_all'].get()
+        for item in self.tree.get_children():
+            values = list(self.tree.item(item, "values"))
+            if checked:
+                values[1] = "✔"
+            else:
+                values[1] = " "
+            self.tree.item(item, values=values)
+
     def btn_run(self):
         """
-        Implementation of the "Run" button click event
+        Implementation of the "Run" button
 
         """
         self.export()
 
     def btn_openf(self):
         """
-        Implementation of the "File Open" button click event
+        Implementation of the "File Open" button
         After selecting a file, the data can be loaded.
         """
         db_path = filedialog.askopenfilename(filetypes=[("MS Access files", "*.mdb, *.accdb")])
@@ -171,7 +187,7 @@ class GetWigetsFrame(tk.Frame):
         with (open(output_sql_path, "w", encoding="utf-8") as sql_file):
             for table in self.db.TableDefs:
                 if not table.Name.startswith("MSys"):
-
+                    # TableDefs("name") get object by name
                     sql_file.write(f"-- Table: {table.Name}\n")
                     sql_file.write(f"CREATE TABLE '{table.Name}' (\n")
 
