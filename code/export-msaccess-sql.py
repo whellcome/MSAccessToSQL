@@ -1,8 +1,10 @@
 
+import webbrowser
 import tkinter as tk
 from tkinter import ttk
 from tkinter import filedialog
 import win32com.client
+import pandas as pd
 
 dao_types = {
     1: "Boolean",
@@ -33,6 +35,7 @@ class GetWigetsFrame(tk.Frame):
         super().__init__(*args, **options)
         self.db = None
         self.svars = {}
+        self.df = pd.DataFrame()
         if render_params is None:
             render_params = dict(sticky="ew", padx=5, pady=2)
         self.__render_params = render_params
@@ -67,7 +70,7 @@ class GetWigetsFrame(tk.Frame):
         self.render(self.label1, dict(row=1, column=0, columnspan=3))
         self.render(tk.Button(self, text="MS Access File Open", command=self.btn_openf),
                     dict(row=2, column=0, columnspan=2))
-        self.render(tk.Button(self, text=" Exit ", command=self.quit), dict(row=2, column=2, columnspan=2))
+        self.render(tk.Button(self, text=" Exit ", command=self.btn_exit), dict(row=2, column=2, columnspan=2))
         self.frame0 = ttk.Frame(self, width=100, borderwidth=1, relief="solid", padding=(2, 2))
         self.render(self.frame0, dict(row=3, column=0, columnspan=3))
         self.render(self.frame1,dict(row=4, column=0, columnspan=3))
@@ -82,6 +85,7 @@ class GetWigetsFrame(tk.Frame):
         self.svars['check_all'] = tk.IntVar(value=0)
         self.render(ttk.Checkbutton(self.frame0, text="Check all to Export", variable=self.svars['check_all'],
                                     command=self.toggle_all), dict(row=0, column=1, padx=2))
+
 
     def make_tree(self):
 
@@ -161,6 +165,10 @@ class GetWigetsFrame(tk.Frame):
         """
         self.export()
 
+    def btn_exit(self):
+        self.destroy()
+        root.destroy()
+
     def btn_openf(self):
         """
         Implementation of the "File Open" button
@@ -171,8 +179,43 @@ class GetWigetsFrame(tk.Frame):
         self.label1['text'] = f"MS Access database for export: \"{self.db_path.get().split('/')[-1]}\""
         self.label1.update()
         self.db_connect()
-        self.make_tree()
-        self.recreate_widgets()
+        if self.check_permissions():
+            self.make_tree()
+            self.recreate_widgets()
+
+
+    def show_permission_warning(self):
+        def open_link(event):
+            webbrowser.open_new("https://github.com/whellcome/MSAccessToSQL")
+
+        warning_window = tk.Toplevel()
+        warning_window.title("Access Permission Error")
+        warning_window.geometry("400x200")
+        warning_window.resizable(False, False)
+
+        label1 = ttk.Label(warning_window, text="Access Permission Error", font=("Helvetica", 14))
+        label1.pack(pady=10)
+
+        message = (
+            "The application requires read access to system tables "
+            "MSysObjects and MSysRelationships. Please refer to the "
+            "documentation for steps to grant the necessary permissions."
+        )
+        label2 = ttk.Label(warning_window, text=message, wraplength=350, justify="center")
+        label2.pack(pady=10)
+
+        link = ttk.Label(
+            warning_window, text="Click here for documentation", foreground="blue", cursor="hand2"
+        )
+        link.pack(pady=10)
+        link.bind("<Button-1>", open_link)
+
+        close_button = ttk.Button(warning_window, text="Close", command=warning_window.destroy)
+        close_button.pack(pady=10)
+
+        warning_window.transient()  # Keep window on top
+        warning_window.grab_set()  # Make modal
+        warning_window.mainloop()
 
     def db_connect(self):
         db_path = self.db_path.get()
@@ -180,6 +223,18 @@ class GetWigetsFrame(tk.Frame):
             return None
         engine = win32com.client.Dispatch("DAO.DBEngine.120")
         self.db = engine.OpenDatabase(db_path)
+
+    def check_permissions(self):
+        try:
+            recordset = self.db.OpenRecordset("SELECT TOP 1 * FROM MSysObjects")
+            recordset.Close()
+
+            recordset = self.db.OpenRecordset("SELECT TOP 1 * FROM MSysRelationships")
+            recordset.Close()
+            return True
+        except Exception as e:
+            self.show_permission_warning()
+            return False
 
     def export(self):
         expath = self.db_path.get().split('/')
@@ -190,7 +245,7 @@ class GetWigetsFrame(tk.Frame):
         with (open(output_sql_path, "w", encoding="utf-8") as sql_file):
             for table in self.db.TableDefs:
                 if not table.Name.startswith("MSys"):
-                    # TableDefs("name") get object by name
+                    #********** TableDefs("name") get object by name*************
                     sql_file.write(f"-- Table: {table.Name}\n")
                     sql_file.write(f"CREATE TABLE '{table.Name}' (\n")
 

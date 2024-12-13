@@ -19,6 +19,33 @@ This project provides a Python-based utility to export the structure and data of
 3. The tool generates an SQL file (`export_msaccess.sql`) with the full database structure and data.
 4. Review or modify the exported script as needed, then import it into your SQL database.
 
+#### **Important Note: Access Permissions**
+
+To ensure the application functions correctly, read access to the system tables (`MSysObjects` and `MSysRelationships`) in your Access database is required. Without this access, the application will not be able to extract necessary metadata.
+
+**Steps to Grant Permissions:**
+
+1. Open your Access database.
+2. Run the following VBA script in the VBA editor (`Alt+F11`):
+    ```vba
+    Sub GrantPermissions()
+        On Error Resume Next
+        Dim strDdl As String
+        strDdl = "GRANT SELECT ON MSysObjects TO Admin;"
+        CurrentProject.Connection.Execute strDdl
+        strDdl = "GRANT SELECT ON MSysRelationships TO Admin;"
+        CurrentProject.Connection.Execute strDdl
+        If Err.Number = 0 Then
+            MsgBox "Permissions granted successfully.", vbInformation
+        Else
+            MsgBox "Failed to grant permissions. Error: " & Err.Description, vbCritical
+        End If
+    End Sub
+    ```
+3. Save the changes and re-run the application.
+
+If you do not have access to modify permissions, please contact your database administrator.
+
 ## Planned Features
 
 - **Graphical User Interface (GUI)**: 
