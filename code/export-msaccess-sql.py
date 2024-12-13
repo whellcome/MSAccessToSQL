@@ -186,35 +186,32 @@ class GetWigetsFrame(tk.Frame):
 
     def show_permission_warning(self):
         def open_link(event):
-            webbrowser.open_new("https://github.com/whellcome/MSAccessToSQL")
+            warning_window.destroy()
+            webbrowser.open_new("https://github.com/whellcome/MSAccessToSQL?tab=readme-ov-file#important-note-access-permissions")
 
         warning_window = tk.Toplevel()
         warning_window.title("Access Permission Error")
-        warning_window.geometry("400x200")
+        warning_window.geometry("345x185")
         warning_window.resizable(False, False)
-
-        label1 = ttk.Label(warning_window, text="Access Permission Error", font=("Helvetica", 14))
-        label1.pack(pady=10)
-
+        spad = 7
+        self.render(ttk.Label(warning_window, text="Access Permission Error", font=("Helvetica", 14)),
+                    dict(row=0, column=0, pady=spad, columnspan=3, sticky = "ns"))
         message = (
-            "The application requires read access to system tables "
+            "The MS Access Export Tool requires access to system tables "
             "MSysObjects and MSysRelationships. Please refer to the "
             "documentation for steps to grant the necessary permissions."
         )
-        label2 = ttk.Label(warning_window, text=message, wraplength=350, justify="center")
-        label2.pack(pady=10)
-
+        self.render(ttk.Label(warning_window, text=message, wraplength=350, justify="center"),
+                    dict(row=1, column=0, columnspan=3, pady=spad))
         link = ttk.Label(
             warning_window, text="Click here for documentation", foreground="blue", cursor="hand2"
         )
-        link.pack(pady=10)
+        self.render(link, dict(row=2, column=0, columnspan=3, pady=spad, sticky = "ns"))
         link.bind("<Button-1>", open_link)
-
-        close_button = ttk.Button(warning_window, text="Close", command=warning_window.destroy)
-        close_button.pack(pady=10)
-
-        warning_window.transient()  # Keep window on top
-        warning_window.grab_set()  # Make modal
+        self.render(tk.Button(warning_window, text=" Close ", command=warning_window.destroy),
+                    dict(row=3, column=1, pady=spad))
+        warning_window.transient()
+        warning_window.grab_set()
         warning_window.mainloop()
 
     def db_connect(self):
