@@ -1,4 +1,3 @@
-
 import webbrowser
 import tkinter as tk
 from tkinter import ttk
@@ -6,19 +5,10 @@ from tkinter import filedialog
 import win32com.client
 import pandas as pd
 
-dao_types = {
-    1: "Boolean",
-    3: "Integer",
-    4: "Long",
-    5: "Currency",
-    7: "Single",
-    8: "Double",
-    9: "Date",
-    10: "Text",
-    11: "Binary",
-    12: "Text"
-}
 
+class TreeviewDataFrame(ttk.Treeview):
+    def __init__(self, parent, dataframe=None, *args, **kwargs):
+        super().__init__(parent, *args, **kwargs)
 
 class GetWigetsFrame(tk.Frame):
     """
@@ -34,7 +24,19 @@ class GetWigetsFrame(tk.Frame):
         """
         super().__init__(*args, **options)
         self.db = None
-        self.svars = {}
+        self.svars = {
+            'dao_types': {
+                1: "Boolean",
+                3: "Integer",
+                4: "Long",
+                5: "Currency",
+                7: "Single",
+                8: "Double",
+                9: "Date",
+                10: "Text",
+                11: "Binary",
+                12: "Text"
+            }}
         self.df = pd.DataFrame()
         if render_params is None:
             render_params = dict(sticky="ew", padx=5, pady=2)
@@ -43,7 +45,7 @@ class GetWigetsFrame(tk.Frame):
         self.label1 = tk.Label(self, text="", font=("Helvetica", 12))
         self.frame0 = ttk.Frame(self, width=100, borderwidth=1, relief="solid", padding=(2, 2))
         self.frame1 = ttk.Frame(self, width=100, borderwidth=1, relief="solid", padding=(2, 2))
-        self.tree = ttk.Treeview(self.frame1, columns=("table", "export", "data"), show="headings")
+        self.tree = TreeviewDataFrame(self.frame1, columns=("table", "export", "data"), show="headings")
         self.scrollbar = ttk.Scrollbar(self.frame1, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=self.scrollbar.set)
         self.create_widgets()
@@ -72,7 +74,7 @@ class GetWigetsFrame(tk.Frame):
         self.render(tk.Button(self, text="MS Access File Open", command=self.btn_openf),
                     dict(row=2, column=0, columnspan=2))
         self.render(tk.Button(self, text=" Exit ", command=self.btn_exit), dict(row=2, column=2, columnspan=2))
-        self.render(self.frame1,dict(row=4, column=0, columnspan=3))
+        self.render(self.frame1, dict(row=4, column=0, columnspan=3))
         self.render(self.tree, dict(row=0, column=0, pady=5))
         self.render(self.scrollbar, dict(row=0, column=3, sticky="ns"))
         self.render(tk.Button(self, text=" Run! ", command=self.btn_run, font=("Helvetica", 12)),
@@ -81,13 +83,13 @@ class GetWigetsFrame(tk.Frame):
     def recreate_widgets(self):
         self.render(self.tree, dict(row=0, column=0, pady=5))
         self.render(self.scrollbar, dict(row=0, column=3, sticky="ns"))
-        self.render(self.frame0, dict(row=3, column=0, columnspan=3,  sticky="e"))
+        self.render(self.frame0, dict(row=3, column=0, columnspan=3, sticky="e"))
         self.svars['check_all'] = tk.IntVar(value=0)
         self.render(ttk.Checkbutton(self.frame0, text="Check all to Export", variable=self.svars['check_all'],
                                     command=self.toggle_all), dict(row=0, column=1, padx=30))
         self.svars['check_all_upload'] = tk.IntVar(value=0)
         self.render(ttk.Checkbutton(self.frame0, text="Check all to Upload", variable=self.svars['check_all_upload'],
-                                    command=self.toggle_all,), dict(row=0, column=2, padx=30))
+                                    command=self.toggle_all, ), dict(row=0, column=2, padx=30))
 
     def make_tree(self):
         self.tree.heading("table", text="Table")
@@ -103,8 +105,8 @@ class GetWigetsFrame(tk.Frame):
         style = ttk.Style()
         style.map("Treeview",
                   background=[("disabled", "#c0c0c0"), ("selected", "#d9f2d9")],
-                  foreground = [("selected", "#000000")]
-                 )
+                  foreground=[("selected", "#000000")]
+                  )
         style.configure("Treeview", rowheight=25)
         self.tree.bind("<Button-1>", self.toggle_cell)
         self.tree.tag_configure("normal")
@@ -152,7 +154,6 @@ class GetWigetsFrame(tk.Frame):
     def btn_run(self):
         """
         Implementation of the "Run" button
-
         """
         self.export()
 
@@ -177,14 +178,16 @@ class GetWigetsFrame(tk.Frame):
     def show_permission_warning(self):
         def open_link(event):
             warning_window.destroy()
-            webbrowser.open_new("https://github.com/whellcome/MSAccessToSQL?tab=readme-ov-file#important-note-access-permissions")
+            webbrowser.open_new(
+                "https://github.com/whellcome/MSAccessToSQL?tab=readme-ov-file#important-note-access-permissions")
+
         warning_window = tk.Toplevel()
         warning_window.title("Access Permission Error")
         warning_window.geometry("345x185")
         warning_window.resizable(False, False)
         spad = 7
         self.render(ttk.Label(warning_window, text="Access Permission Error", font=("Helvetica", 14)),
-                    dict(row=0, column=0, pady=spad, columnspan=3, sticky = "ns"))
+                    dict(row=0, column=0, pady=spad, columnspan=3, sticky="ns"))
         message = (
             "The MS Access Export Tool requires access to system tables "
             "MSysObjects and MSysRelationships. Please refer to the "
@@ -195,7 +198,7 @@ class GetWigetsFrame(tk.Frame):
         link = ttk.Label(
             warning_window, text="Click here for documentation", foreground="blue", cursor="hand2"
         )
-        self.render(link, dict(row=2, column=0, columnspan=3, pady=spad, sticky = "ns"))
+        self.render(link, dict(row=2, column=0, columnspan=3, pady=spad, sticky="ns"))
         link.bind("<Button-1>", open_link)
         self.render(tk.Button(warning_window, text=" Close ", command=warning_window.destroy),
                     dict(row=3, column=1, pady=spad))
@@ -229,7 +232,7 @@ class GetWigetsFrame(tk.Frame):
         with (open(output_sql_path, "w", encoding="utf-8") as sql_file):
             for table in self.db.TableDefs:
                 if not table.Name.startswith("MSys"):
-                    #********** TableDefs("name") get object by name*************
+                    # ********** TableDefs("name") get object by name*************
                     sql_file.write(f"-- Table: {table.Name}\n")
                     sql_file.write(f"CREATE TABLE '{table.Name}' (\n")
                     column_definitions = []
@@ -238,7 +241,7 @@ class GetWigetsFrame(tk.Frame):
                         fSize = f"({field.Size})" if field.Size else ''
                         column_definitions.append(
                             f" '{field.Name}'"
-                            f" {dao_types.get(field.Type, 'Unknown')}{fSize}"
+                            f" {self.svars['dao_types'].get(field.Type, 'Unknown')}{fSize}"
                             f" {cNull}"
                         )
                     relationships_query = """
