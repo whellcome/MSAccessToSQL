@@ -7,8 +7,77 @@ import pandas as pd
 
 
 class TreeviewDataFrame(ttk.Treeview):
-    def __init__(self, parent, dataframe=None, *args, **kwargs):
+    def __init__(self, parent, *args, **kwargs):
         super().__init__(parent, *args, **kwargs)
+        self.df = pd.DataFrame()
+        self.df.index.name = "TreeID"
+
+    def column(self, column, option=None, **kw):
+        """
+            Override column method with DataFrame.
+        """
+        result = super().column(column, option=option, **kw)
+        if column not in self.df.columns:
+            self.df[column] = None
+        return result
+
+    def insert(self, parent, index, iid=None, **kw):
+        """
+               Inserts a new row into the Treeview and synchronizes it with the DataFrame.
+
+               :param parent: Parent node for Treeview (usually "" for root-level items).
+               :param index: Position to insert the item.
+               :param iid: Unique identifier for the row. If None, Treeview generates one.
+               :param kwargs: Additional arguments for Treeview insert (e.g., values).
+               """
+        # Use the provided iid or let Treeview generate one
+        if iid is None:
+            iid = super().insert(parent, index, **kw)  # Automatically generate iid
+        else:
+            super().insert(parent, index, iid=iid, **kw)
+
+        # Ensure values are provided
+        values = kw.get("values", [])
+
+        # Convert values to a DataFrame-compatible dictionary
+        new_row = {col: val for col, val in zip(self.cget("columns"), values)}
+
+        # Add the new row to the DataFrame, using iid as the index
+        self.df.loc[iid] = new_row
+        return iid
+
+    def set(self, item, column=None, value=None):
+        """
+            Enhanced set method for synchronization with a DataFrame.
+
+            :param item: The item ID (iid) in the Treeview.
+            :param column: The column name to retrieve or update.
+            :param value: The value to set; if None, retrieves the current value.
+            :return: The value as returned by the original Treeview method.
+        """
+        result = super().set(item, column, value)
+        if item not in self.df.index:
+            raise KeyError(f"Row with index '{item}' not found in DataFrame.")
+
+        if value is None:
+            if column is None:
+                self.df.loc[item] = self.df.loc[item].replace(result)
+            else:
+                self.df.loc[item,column] = result
+        else:
+            self.df.loc[item, column] = value
+
+        return result
+
+    def delete(self, *items):
+        """
+        Override delete method with DataFrame..
+        """
+        for item in items:
+            values = self.item(item, "values")
+            self.df = self.df[~(self.df[list(self.df.columns)] == values).all(axis=1)]
+        super().delete(*items)
+
 
 class GetWigetsFrame(tk.Frame):
     """
