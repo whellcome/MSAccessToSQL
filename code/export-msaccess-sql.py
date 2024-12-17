@@ -10,7 +10,7 @@ class TreeviewDataFrame(ttk.Treeview):
     def __init__(self, parent, *args, **kwargs):
         super().__init__(parent, *args, **kwargs)
         self.df = pd.DataFrame()
-        self.df.index.name = "TreeID"
+
 
     def column(self, column, option=None, **kw):
         """
@@ -18,7 +18,7 @@ class TreeviewDataFrame(ttk.Treeview):
         """
         result = super().column(column, option=option, **kw)
         if column not in self.df.columns:
-            self.df[column] = None
+            self.df[column] = ''
         return result
 
     def insert(self, parent, index, iid=None, **kw):
@@ -63,27 +63,51 @@ class TreeviewDataFrame(ttk.Treeview):
             if column is None:
                 self.df.loc[item] = self.df.loc[item].replace(result)
             else:
-                self.df.loc[item,column] = result
+                self.df.loc[item, column] = result
         else:
             self.df.loc[item, column] = value
+        print(self.df)
+        return result
+
+    def item(self, item, option=None, **kw):
+        """
+            Override item method with DataFrame.
+        """
+        values = kw.get("values", [])
+        result = super().item(item, option, **kw)
+        if option is None and len(values):
+            updates = pd.Series(values, index=self.cget("columns"))
+            self.df.loc[item].update(updates)
 
         return result
 
-    def delete(self, *items):
+    def delete(self, *items, inplace = False):
         """
         Override delete method with DataFrame..
         """
-        for item in items:
-            values = self.item(item, "values")
-            self.df = self.df[~(self.df[list(self.df.columns)] == values).all(axis=1)]
+        if inplace:
+            for item in items:
+                values = self.item(item, "values")
+                self.df = self.df[~(self.df[list(self.df.columns)] == values).all(axis=1)]
         super().delete(*items)
+
+    def rebuild_tree(self, dataframe=None):
+        if dataframe is None:
+            dataframe = self.df
+        self.delete(*self.get_children())
+        for index, row in dataframe.iterrows():
+            self.insert("", "end", iid=index, values=row.to_list())
+
+    def filter_by_name(self, keyword):
+        """Filter rows based on a keyword in first column and update Treeview."""
+        filtered_df = self.df[self.df[self.df.columns[0]].str.contains(keyword, case=False)]
+        self.rebuild_tree(filtered_df)
 
 
 class GetWigetsFrame(tk.Frame):
     """
     The main class of the program is responsible for constructing the form and interaction of elements
     """
-
     def __init__(self, render_params=None, *args, **options):
         """
         Initialization of the Frame, description of the main elements
@@ -106,13 +130,14 @@ class GetWigetsFrame(tk.Frame):
                 11: "Binary",
                 12: "Text"
             }}
-        self.df = pd.DataFrame()
+
         if render_params is None:
             render_params = dict(sticky="ew", padx=5, pady=2)
         self.__render_params = render_params
         self.db_path = tk.StringVar(self, "")
         self.label1 = tk.Label(self, text="", font=("Helvetica", 12))
         self.frame0 = ttk.Frame(self, width=100, borderwidth=1, relief="solid", padding=(2, 2))
+        self.filter_entry = ttk.Entry(self.frame0)
         self.frame1 = ttk.Frame(self, width=100, borderwidth=1, relief="solid", padding=(2, 2))
         self.tree = TreeviewDataFrame(self.frame1, columns=("table", "export", "data"), show="headings")
         self.scrollbar = ttk.Scrollbar(self.frame1, orient="vertical", command=self.tree.yview)
@@ -153,12 +178,22 @@ class GetWigetsFrame(tk.Frame):
         self.render(self.tree, dict(row=0, column=0, pady=5))
         self.render(self.scrollbar, dict(row=0, column=3, sticky="ns"))
         self.render(self.frame0, dict(row=3, column=0, columnspan=3, sticky="e"))
+        self.render(self.filter_entry, dict(row=0, column=0, padx=5, pady=5, sticky="ew"))
+        def apply_filter():
+            self.tree.filter_by_name(self.filter_entry.get())
+        def clear_filter():
+            self.tree.rebuild_tree()
+            self.filter_entry.delete(0, tk.END)
+
+        self.render(ttk.Button(self.frame0, text="Filter", command=apply_filter), dict(row=0, column=1, padx=5, pady=5))
+        self.render(ttk.Button(self.frame0, text="Restore", command=clear_filter),
+                    dict(row=0, column=2, padx=5, pady=5))
         self.svars['check_all'] = tk.IntVar(value=0)
         self.render(ttk.Checkbutton(self.frame0, text="Check all to Export", variable=self.svars['check_all'],
-                                    command=self.toggle_all), dict(row=0, column=1, padx=30))
+                                    command=self.toggle_all), dict(row=1, column=1, padx=30))
         self.svars['check_all_upload'] = tk.IntVar(value=0)
         self.render(ttk.Checkbutton(self.frame0, text="Check all to Upload", variable=self.svars['check_all_upload'],
-                                    command=self.toggle_all, ), dict(row=0, column=2, padx=30))
+                                    command=self.toggle_all, ), dict(row=1, column=2, padx=30))
 
     def make_tree(self):
         self.tree.heading("table", text="Table")
