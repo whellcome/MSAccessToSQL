@@ -6,11 +6,39 @@ import win32com.client
 import pandas as pd
 
 
-class TreeviewDataFrame(ttk.Treeview):
-    def __init__(self, parent, *args, **kwargs):
-        super().__init__(parent, *args, **kwargs)
-        self.df = pd.DataFrame()
+class WidgetsRender():
+    def __init__(self, render_params=None, *args, **options):
+        """
+        Initialization of the Frame, description of the main elements
+        :param render_params: General parameters for the arrangement of elements can be set externally
+        :param args:
+        :param options:
+        """
+        super().__init__(*args, **options)
+        if render_params is None:
+            render_params = dict(sticky="ew", padx=5, pady=2)
+        self.__render_params = render_params
 
+    def render(self, obj=None, render_params=None):
+        """
+        Perform element creation and rendering in one command. Without creating a variable unnecessarily.
+        Combines general parameters for the arrangement of elements and parameters for a specific element.
+        :param obj: Element to rendering
+        :param render_params: Dictionary with element parameters
+        :return: Rendered element
+        """
+        if obj:
+            render_params = render_params if render_params else {}
+            united_pack_params = self.__render_params.copy()
+            united_pack_params.update(render_params)
+            obj.grid(united_pack_params)
+        return obj
+
+
+class TreeviewDataFrame(WidgetsRender, ttk.Treeview):
+    def __init__(self, parent, render_params=None, *args, **kwargs):
+        super().__init__(render_params, parent, *args, **kwargs)
+        self.df = pd.DataFrame()
 
     def column(self, column, option=None, **kw):
         """
@@ -66,19 +94,17 @@ class TreeviewDataFrame(ttk.Treeview):
                 self.df.loc[item, column] = result
         else:
             self.df.loc[item, column] = value
-        print(self.df)
         return result
 
     def item(self, item, option=None, **kw):
         """
-            Override item method with DataFrame.
+        Override item method with DataFrame.
         """
         values = kw.get("values", [])
         result = super().item(item, option, **kw)
         if option is None and len(values):
             updates = pd.Series(values, index=self.cget("columns"))
-            self.df.loc[item].update(updates)
-
+            self.df.loc[item] = updates
         return result
 
     def delete(self, *items, inplace = False):
@@ -104,7 +130,28 @@ class TreeviewDataFrame(ttk.Treeview):
         self.rebuild_tree(filtered_df)
 
 
-class GetWigetsFrame(tk.Frame):
+    def filter_widget(self, parent):
+        widget_frame = ttk.Frame(parent, width=150, borderwidth=1, relief="solid", padding=(2, 2))
+        self.render(tk.Label(widget_frame, text="Filter by table name:", font=("Helvetica", 9,"bold")),
+                    dict(row=0, column=0, pady=5))
+        filter_entry = tk.Entry(widget_frame)
+        self.render(filter_entry, dict(row=0, column=1, padx=5, pady=5, sticky="ew"))
+
+        def apply_filter():
+            self.filter_by_name(filter_entry.get())
+
+        def clear_filter():
+            self.rebuild_tree()
+            filter_entry.delete(0, tk.END)
+
+        self.render(ttk.Button(widget_frame, text="Filter", command=apply_filter),
+                    dict(row=0, column=2, padx=5, pady=5))
+        self.render(ttk.Button(widget_frame, text="Restore", command=clear_filter),
+                    dict(row=0, column=3, padx=5, pady=5))
+        return widget_frame
+
+
+class GetWidgetsFrame(WidgetsRender, ttk.Frame):
     """
     The main class of the program is responsible for constructing the form and interaction of elements
     """
@@ -130,34 +177,15 @@ class GetWigetsFrame(tk.Frame):
                 11: "Binary",
                 12: "Text"
             }}
-
-        if render_params is None:
-            render_params = dict(sticky="ew", padx=5, pady=2)
-        self.__render_params = render_params
         self.db_path = tk.StringVar(self, "")
-        self.label1 = tk.Label(self, text="", font=("Helvetica", 12))
-        self.frame0 = ttk.Frame(self, width=100, borderwidth=1, relief="solid", padding=(2, 2))
+        self.label1 = ttk.Label(self, text="", font=("Helvetica", 12))
+        self.frame0 = ttk.Frame(self, width=240, borderwidth=1, relief="solid", padding=(2, 2))
         self.filter_entry = ttk.Entry(self.frame0)
         self.frame1 = ttk.Frame(self, width=100, borderwidth=1, relief="solid", padding=(2, 2))
         self.tree = TreeviewDataFrame(self.frame1, columns=("table", "export", "data"), show="headings")
         self.scrollbar = ttk.Scrollbar(self.frame1, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=self.scrollbar.set)
         self.create_widgets()
-
-    def render(self, obj=None, render_params=None):
-        """
-        Perform element creation and rendering in one command. Without creating a variable unnecessarily.
-        Combines general parameters for the arrangement of elements and parameters for a specific element.
-        :param obj: Element to rendering
-        :param render_params: Dictionary with element parameters
-        :return: Rendered element
-        """
-        if obj:
-            render_params = render_params if render_params else {}
-            united_pack_params = self.__render_params.copy()
-            united_pack_params.update(render_params)
-            obj.grid(united_pack_params)
-        return obj
 
     def create_widgets(self):
         """Building the main widgets at the beginning of program execution"""
@@ -178,22 +206,15 @@ class GetWigetsFrame(tk.Frame):
         self.render(self.tree, dict(row=0, column=0, pady=5))
         self.render(self.scrollbar, dict(row=0, column=3, sticky="ns"))
         self.render(self.frame0, dict(row=3, column=0, columnspan=3, sticky="e"))
-        self.render(self.filter_entry, dict(row=0, column=0, padx=5, pady=5, sticky="ew"))
-        def apply_filter():
-            self.tree.filter_by_name(self.filter_entry.get())
-        def clear_filter():
-            self.tree.rebuild_tree()
-            self.filter_entry.delete(0, tk.END)
-
-        self.render(ttk.Button(self.frame0, text="Filter", command=apply_filter), dict(row=0, column=1, padx=5, pady=5))
-        self.render(ttk.Button(self.frame0, text="Restore", command=clear_filter),
-                    dict(row=0, column=2, padx=5, pady=5))
+        self.render(self.tree.filter_widget(self.frame0),dict(row=0, column=0, columnspan=3, padx=5, pady=5, sticky="ew"))
+        self.render(tk.Label(self.frame0, text=" ", width=43),
+                    dict(row=1, column=0, columnspan=2, pady=5))
         self.svars['check_all'] = tk.IntVar(value=0)
         self.render(ttk.Checkbutton(self.frame0, text="Check all to Export", variable=self.svars['check_all'],
-                                    command=self.toggle_all), dict(row=1, column=1, padx=30))
+                                    command=self.toggle_all_export), dict(row=1, column=2, padx=20))
         self.svars['check_all_upload'] = tk.IntVar(value=0)
         self.render(ttk.Checkbutton(self.frame0, text="Check all to Upload", variable=self.svars['check_all_upload'],
-                                    command=self.toggle_all, ), dict(row=1, column=2, padx=30))
+                                    command=self.toggle_all_upload, ), dict(row=1, column=3, padx=20))
 
     def make_tree(self):
         self.tree.heading("table", text="Table")
@@ -236,24 +257,46 @@ class GetWigetsFrame(tk.Frame):
         if col == "#2":
             current_value = tree.set(item, "export")
             tree.set(item, "export", " " if current_value == "✔" else "✔")
-            if self.svars['check_all'].get() == 1:
-                if current_value == "✔":
+            if current_value == "✔":
+                tree.set(item, "data", " ")
+                if self.svars['check_all'].get() == 1:
                     self.svars['check_all'].set(0)
+                    self.svars['check_all_upload'].set(0)
+
         elif col == "#3":
             current_value = tree.set(item, "data")
             if tree.set(item, "export") == "✔":
                 tree.set(item, "data", " " if current_value == "✔" else "✔")
+            if current_value == "✔":
+                if self.svars['check_all_upload'].get() == 1:
+                    self.svars['check_all_upload'].set(0)
+
         self.update_data_column(None)
 
-    def toggle_all(self):
+    def toggle_all_export(self):
         checked = self.svars['check_all'].get()
+        if not checked:
+            self.svars['check_all_upload'].set(False)
         for item in self.tree.get_children():
             values = list(self.tree.item(item, "values"))
             if checked:
                 values[1] = "✔"
             else:
                 values[1] = " "
+                values[2] = " "
             self.tree.item(item, values=values)
+
+    def toggle_all_upload(self):
+        checked = self.svars['check_all_upload'].get()
+        for item in self.tree.get_children():
+            values = list(self.tree.item(item, "values"))
+            if checked:
+                values[2] = "✔" if values[1] == "✔" else " "
+            else:
+                values[2] = " "
+            self.tree.item(item, values=values)
+        if not self.svars['check_all'].get():
+            self.svars['check_all_upload'].set(False)
 
     def btn_run(self):
         """
@@ -405,5 +448,5 @@ class GetWigetsFrame(tk.Frame):
 if __name__ == "__main__":
     root = tk.Tk()
     root.title("MS Access Export")
-    app = GetWigetsFrame(master=root, padx=20, pady=10)
+    app = GetWidgetsFrame(master=root, padding=(2, 2))
     app.mainloop()
