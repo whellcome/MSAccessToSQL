@@ -6,7 +6,7 @@ import win32com.client
 import pandas as pd
 
 
-class WigetsRenderFrame(ttk.Frame):
+class WidgetsRender():
     def __init__(self, render_params=None, *args, **options):
         """
         Initialization of the Frame, description of the main elements
@@ -35,9 +35,9 @@ class WigetsRenderFrame(ttk.Frame):
         return obj
 
 
-class TreeviewDataFrame(ttk.Treeview):
-    def __init__(self, parent, *args, **kwargs):
-        super().__init__(parent, *args, **kwargs)
+class TreeviewDataFrame(WidgetsRender, ttk.Treeview):
+    def __init__(self, parent, render_params=None, *args, **kwargs):
+        super().__init__(render_params, parent, *args, **kwargs)
         self.df = pd.DataFrame()
 
     def column(self, column, option=None, **kw):
@@ -131,9 +131,11 @@ class TreeviewDataFrame(ttk.Treeview):
 
 
     def filter_widget(self, parent):
-        wframe = WigetsRenderFrame(parent, width=100, borderwidth=1, relief="solid", padding=(2, 2))
-        filter_entry = tk.Entry(wframe)
-        wframe.render(filter_entry, dict(row=0, column=0, padx=5, pady=5, sticky="ew"))
+        widget_frame = ttk.Frame(parent, width=150, borderwidth=1, relief="solid", padding=(2, 2))
+        self.render(tk.Label(widget_frame, text="Filter by table name:", font=("Helvetica", 9,"bold")),
+                    dict(row=0, column=0, pady=5))
+        filter_entry = tk.Entry(widget_frame)
+        self.render(filter_entry, dict(row=0, column=1, padx=5, pady=5, sticky="ew"))
 
         def apply_filter():
             self.filter_by_name(filter_entry.get())
@@ -142,14 +144,14 @@ class TreeviewDataFrame(ttk.Treeview):
             self.rebuild_tree()
             filter_entry.delete(0, tk.END)
 
-        wframe.render(ttk.Button(wframe, text="Filter", command=apply_filter),
-                    dict(row=0, column=1, padx=5, pady=5))
-        wframe.render(ttk.Button(wframe, text="Restore", command=clear_filter),
+        self.render(ttk.Button(widget_frame, text="Filter", command=apply_filter),
                     dict(row=0, column=2, padx=5, pady=5))
-        return wframe
+        self.render(ttk.Button(widget_frame, text="Restore", command=clear_filter),
+                    dict(row=0, column=3, padx=5, pady=5))
+        return widget_frame
 
 
-class GetWigetsFrame(WigetsRenderFrame):
+class GetWidgetsFrame(WidgetsRender, ttk.Frame):
     """
     The main class of the program is responsible for constructing the form and interaction of elements
     """
@@ -177,7 +179,7 @@ class GetWigetsFrame(WigetsRenderFrame):
             }}
         self.db_path = tk.StringVar(self, "")
         self.label1 = ttk.Label(self, text="", font=("Helvetica", 12))
-        self.frame0 = ttk.Frame(self, width=100, borderwidth=1, relief="solid", padding=(2, 2))
+        self.frame0 = ttk.Frame(self, width=240, borderwidth=1, relief="solid", padding=(2, 2))
         self.filter_entry = ttk.Entry(self.frame0)
         self.frame1 = ttk.Frame(self, width=100, borderwidth=1, relief="solid", padding=(2, 2))
         self.tree = TreeviewDataFrame(self.frame1, columns=("table", "export", "data"), show="headings")
@@ -204,23 +206,15 @@ class GetWigetsFrame(WigetsRenderFrame):
         self.render(self.tree, dict(row=0, column=0, pady=5))
         self.render(self.scrollbar, dict(row=0, column=3, sticky="ns"))
         self.render(self.frame0, dict(row=3, column=0, columnspan=3, sticky="e"))
-        # self.render(self.tree.filter_widget(self.frame0),dict(row=0, column=0, padx=5, pady=5, sticky="ew"))
-        self.render(self.filter_entry, dict(row=0, column=0, padx=5, pady=5, sticky="ew"))
-        def apply_filter():
-            self.tree.filter_by_name(self.filter_entry.get())
-        def clear_filter():
-            self.tree.rebuild_tree()
-            self.filter_entry.delete(0, tk.END)
-
-        self.render(ttk.Button(self.frame0, text="Filter", command=apply_filter), dict(row=0, column=1, padx=5, pady=5))
-        self.render(ttk.Button(self.frame0, text="Restore", command=clear_filter),
-                    dict(row=0, column=2, padx=5, pady=5))
+        self.render(self.tree.filter_widget(self.frame0),dict(row=0, column=0, columnspan=3, padx=5, pady=5, sticky="ew"))
+        self.render(tk.Label(self.frame0, text=" ", width=43),
+                    dict(row=1, column=0, columnspan=2, pady=5))
         self.svars['check_all'] = tk.IntVar(value=0)
         self.render(ttk.Checkbutton(self.frame0, text="Check all to Export", variable=self.svars['check_all'],
-                                    command=self.toggle_all), dict(row=1, column=1, padx=30))
+                                    command=self.toggle_all_export), dict(row=1, column=2, padx=20))
         self.svars['check_all_upload'] = tk.IntVar(value=0)
         self.render(ttk.Checkbutton(self.frame0, text="Check all to Upload", variable=self.svars['check_all_upload'],
-                                    command=self.toggle_all, ), dict(row=1, column=2, padx=30))
+                                    command=self.toggle_all_upload, ), dict(row=1, column=3, padx=20))
 
     def make_tree(self):
         self.tree.heading("table", text="Table")
@@ -263,24 +257,46 @@ class GetWigetsFrame(WigetsRenderFrame):
         if col == "#2":
             current_value = tree.set(item, "export")
             tree.set(item, "export", " " if current_value == "✔" else "✔")
-            if self.svars['check_all'].get() == 1:
-                if current_value == "✔":
+            if current_value == "✔":
+                tree.set(item, "data", " ")
+                if self.svars['check_all'].get() == 1:
                     self.svars['check_all'].set(0)
+                    self.svars['check_all_upload'].set(0)
+
         elif col == "#3":
             current_value = tree.set(item, "data")
             if tree.set(item, "export") == "✔":
                 tree.set(item, "data", " " if current_value == "✔" else "✔")
+            if current_value == "✔":
+                if self.svars['check_all_upload'].get() == 1:
+                    self.svars['check_all_upload'].set(0)
+
         self.update_data_column(None)
 
-    def toggle_all(self):
+    def toggle_all_export(self):
         checked = self.svars['check_all'].get()
+        if not checked:
+            self.svars['check_all_upload'].set(False)
         for item in self.tree.get_children():
             values = list(self.tree.item(item, "values"))
             if checked:
                 values[1] = "✔"
             else:
                 values[1] = " "
+                values[2] = " "
             self.tree.item(item, values=values)
+
+    def toggle_all_upload(self):
+        checked = self.svars['check_all_upload'].get()
+        for item in self.tree.get_children():
+            values = list(self.tree.item(item, "values"))
+            if checked:
+                values[2] = "✔" if values[1] == "✔" else " "
+            else:
+                values[2] = " "
+            self.tree.item(item, values=values)
+        if not self.svars['check_all'].get():
+            self.svars['check_all_upload'].set(False)
 
     def btn_run(self):
         """
@@ -432,5 +448,5 @@ class GetWigetsFrame(WigetsRenderFrame):
 if __name__ == "__main__":
     root = tk.Tk()
     root.title("MS Access Export")
-    app = GetWigetsFrame(master=root, padding=(2, 2))
+    app = GetWidgetsFrame(master=root, padding=(2, 2))
     app.mainloop()
