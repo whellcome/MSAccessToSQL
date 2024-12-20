@@ -6,7 +6,7 @@ import win32com.client
 import pandas as pd
 
 
-class WidgetsRender():
+class WidgetsRender:
     def __init__(self, render_params=None, *args, **options):
         """
         Initialization of the Frame, description of the main elements
@@ -39,6 +39,7 @@ class TreeviewDataFrame(WidgetsRender, ttk.Treeview):
     def __init__(self, parent, render_params=None, *args, **kwargs):
         super().__init__(render_params, parent, *args, **kwargs)
         self.df = pd.DataFrame()
+        self.filtered_df = pd.DataFrame()
 
     def column(self, column, option=None, **kw):
         """
@@ -56,7 +57,7 @@ class TreeviewDataFrame(WidgetsRender, ttk.Treeview):
                :param parent: Parent node for Treeview (usually "" for root-level items).
                :param index: Position to insert the item.
                :param iid: Unique identifier for the row. If None, Treeview generates one.
-               :param kwargs: Additional arguments for Treeview insert (e.g., values).
+               :param kw: Additional arguments for Treeview insert (e.g., values).
                """
         # Use the provided iid or let Treeview generate one
         if iid is None:
@@ -86,7 +87,7 @@ class TreeviewDataFrame(WidgetsRender, ttk.Treeview):
         result = super().set(item, column, value)
         if item not in self.df.index:
             raise KeyError(f"Row with index '{item}' not found in DataFrame.")
-
+        is_filtered = True if item in self.filtered_df.index else False
         if value is None:
             if column is None:
                 self.df.loc[item] = self.df.loc[item].replace(result)
@@ -94,6 +95,8 @@ class TreeviewDataFrame(WidgetsRender, ttk.Treeview):
                 self.df.loc[item, column] = result
         else:
             self.df.loc[item, column] = value
+            if is_filtered:
+                self.filtered_df.loc[item, column] = value
         return result
 
     def item(self, item, option=None, **kw):
@@ -102,12 +105,15 @@ class TreeviewDataFrame(WidgetsRender, ttk.Treeview):
         """
         values = kw.get("values", [])
         result = super().item(item, option, **kw)
+        is_filtered = True if item in self.filtered_df.index else False
         if option is None and len(values):
             updates = pd.Series(values, index=self.cget("columns"))
             self.df.loc[item] = updates
+            if is_filtered:
+                self.filtered_df.loc[item] = updates
         return result
 
-    def delete(self, *items, inplace = False):
+    def delete(self, *items, inplace=False):
         """
         Override delete method with DataFrame..
         """
@@ -125,24 +131,38 @@ class TreeviewDataFrame(WidgetsRender, ttk.Treeview):
             self.insert("", "end", iid=index, values=row.to_list())
 
     def filter_by_name(self, keyword):
-        """Filter rows based on a keyword in first column and update Treeview."""
-        filtered_df = self.df[self.df[self.df.columns[0]].str.contains(keyword, case=False)]
-        self.rebuild_tree(filtered_df)
+        """Filter rows based on a keyword and update Treeview."""
+        self.filtered_df = self.df[self.df[self.df.columns[0]].str.contains(keyword, case=False)].copy()
+        self.rebuild_tree(self.filtered_df)
 
+    def filter_event_evoke(self):
+        """
+        Filter updated event.
+        """
+        self.event_generate("<<TreeFilterUpdated>>")
+
+    def all_checked(self, column):
+        df = self.filtered_df if len(self.filtered_df) else self.df
+        return not len(df[df.iloc[:, column] == " "])
 
     def filter_widget(self, parent):
         widget_frame = ttk.Frame(parent, width=150, borderwidth=1, relief="solid", padding=(2, 2))
-        self.render(tk.Label(widget_frame, text="Filter by table name:", font=("Helvetica", 9,"bold")),
+        self.render(tk.Label(widget_frame, text="Filter by table name:", font=("Helvetica", 9, "bold")),
                     dict(row=0, column=0, pady=5))
         filter_entry = tk.Entry(widget_frame)
         self.render(filter_entry, dict(row=0, column=1, padx=5, pady=5, sticky="ew"))
 
         def apply_filter():
             self.filter_by_name(filter_entry.get())
+            if len(self.filtered_df) == len(self.df):
+                self.filtered_df = pd.DataFrame()
+            self.filter_event_evoke()
 
         def clear_filter():
             self.rebuild_tree()
             filter_entry.delete(0, tk.END)
+            self.filtered_df = pd.DataFrame()
+            self.filter_event_evoke()
 
         self.render(ttk.Button(widget_frame, text="Filter", command=apply_filter),
                     dict(row=0, column=2, padx=5, pady=5))
@@ -150,11 +170,15 @@ class TreeviewDataFrame(WidgetsRender, ttk.Treeview):
                     dict(row=0, column=3, padx=5, pady=5))
         return widget_frame
 
+    def checkboxes_widget(self):
+        pass
+
 
 class GetWidgetsFrame(WidgetsRender, ttk.Frame):
     """
     The main class of the program is responsible for constructing the form and interaction of elements
     """
+
     def __init__(self, render_params=None, *args, **options):
         """
         Initialization of the Frame, description of the main elements
@@ -180,9 +204,9 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
         self.db_path = tk.StringVar(self, "")
         self.label1 = ttk.Label(self, text="", font=("Helvetica", 12))
         self.frame0 = ttk.Frame(self, width=240, borderwidth=1, relief="solid", padding=(2, 2))
-        self.filter_entry = ttk.Entry(self.frame0)
         self.frame1 = ttk.Frame(self, width=100, borderwidth=1, relief="solid", padding=(2, 2))
         self.tree = TreeviewDataFrame(self.frame1, columns=("table", "export", "data"), show="headings")
+        self.tree.bind("<<TreeFilterUpdated>>", self.on_filter_updated)
         self.scrollbar = ttk.Scrollbar(self.frame1, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=self.scrollbar.set)
         self.create_widgets()
@@ -206,7 +230,8 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
         self.render(self.tree, dict(row=0, column=0, pady=5))
         self.render(self.scrollbar, dict(row=0, column=3, sticky="ns"))
         self.render(self.frame0, dict(row=3, column=0, columnspan=3, sticky="e"))
-        self.render(self.tree.filter_widget(self.frame0),dict(row=0, column=0, columnspan=3, padx=5, pady=5, sticky="ew"))
+        self.render(self.tree.filter_widget(self.frame0),
+                    dict(row=0, column=0, columnspan=3, padx=5, pady=5, sticky="ew"))
         self.render(tk.Label(self.frame0, text=" ", width=43),
                     dict(row=1, column=0, columnspan=2, pady=5))
         self.svars['check_all'] = tk.IntVar(value=0)
@@ -246,6 +271,10 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
             else:
                 self.tree.item(item_id, tags=("normal",))
 
+    def on_filter_updated(self, event):
+        self.svars['check_all'].set(self.tree.all_checked(1))
+        self.svars['check_all_upload'].set(self.tree.all_checked(2))
+
     def toggle_cell(self, event):
         """Handles cell clicks to change flags."""
         tree = self.tree
@@ -270,8 +299,11 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
             if current_value == "✔":
                 if self.svars['check_all_upload'].get() == 1:
                     self.svars['check_all_upload'].set(0)
-
         self.update_data_column(None)
+
+        self.svars['check_all'].set(self.tree.all_checked(1))
+        self.svars['check_all_upload'].set(self.tree.all_checked(2))
+
 
     def toggle_all_export(self):
         checked = self.svars['check_all'].get()
@@ -367,7 +399,7 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
             recordset = self.db.OpenRecordset("SELECT TOP 1 * FROM MSysRelationships")
             recordset.Close()
             return True
-        except Exception as e:
+        except:
             self.show_permission_warning()
             return False
 
