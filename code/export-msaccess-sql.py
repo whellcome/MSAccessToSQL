@@ -1,9 +1,9 @@
-import webbrowser
 import tkinter as tk
-from tkinter import ttk
+import webbrowser
 from tkinter import filedialog
-import win32com.client
+from tkinter import ttk
 import pandas as pd
+import win32com.client
 
 
 class WidgetsRender:
@@ -136,9 +136,7 @@ class TreeviewDataFrame(WidgetsRender, ttk.Treeview):
         self.rebuild_tree(self.filtered_df)
 
     def filter_event_evoke(self):
-        """
-        Filter updated event.
-        """
+        """Filter updated event."""
         self.event_generate("<<TreeFilterUpdated>>")
 
     def all_checked(self, column):
@@ -207,6 +205,7 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
         self.frame1 = ttk.Frame(self, width=100, borderwidth=1, relief="solid", padding=(2, 2))
         self.tree = TreeviewDataFrame(self.frame1, columns=("table", "export", "data"), show="headings")
         self.tree.bind("<<TreeFilterUpdated>>", self.on_filter_updated)
+        self.tree.bind("<Button-1>", self.toggle_cell)
         self.scrollbar = ttk.Scrollbar(self.frame1, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=self.scrollbar.set)
         self.create_widgets()
@@ -258,7 +257,6 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
                   foreground=[("selected", "#000000")]
                   )
         style.configure("Treeview", rowheight=25)
-        self.tree.bind("<Button-1>", self.toggle_cell)
         self.tree.tag_configure("normal")
         self.tree.tag_configure("export", background="#fff0f0")
 
@@ -288,22 +286,15 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
             tree.set(item, "export", " " if current_value == "✔" else "✔")
             if current_value == "✔":
                 tree.set(item, "data", " ")
-                if self.svars['check_all'].get() == 1:
-                    self.svars['check_all'].set(0)
-                    self.svars['check_all_upload'].set(0)
 
         elif col == "#3":
             current_value = tree.set(item, "data")
             if tree.set(item, "export") == "✔":
                 tree.set(item, "data", " " if current_value == "✔" else "✔")
-            if current_value == "✔":
-                if self.svars['check_all_upload'].get() == 1:
-                    self.svars['check_all_upload'].set(0)
-        self.update_data_column(None)
 
+        self.update_data_column(None)
         self.svars['check_all'].set(self.tree.all_checked(1))
         self.svars['check_all_upload'].set(self.tree.all_checked(2))
-
 
     def toggle_all_export(self):
         checked = self.svars['check_all'].get()
