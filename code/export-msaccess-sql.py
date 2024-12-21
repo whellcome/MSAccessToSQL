@@ -1,7 +1,8 @@
 import tkinter as tk
 import webbrowser
-from tkinter import filedialog
+from tkinter import filedialog, messagebox
 from tkinter import ttk
+
 import pandas as pd
 import win32com.client
 
@@ -394,78 +395,138 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
             self.show_permission_warning()
             return False
 
-    def export(self):
+    def get_referenced_tables(self, table_name):
+        referenced_tables = []
+        query = """
+            SELECT DISTINCT szReferencedObject AS ReferencedTable
+            FROM MSysRelationships
+            WHERE szObject = ?
+            """
+        query_def = self.db.CreateQueryDef("", query)
+        query_def.Parameters(0).Value = table_name
+        try:
+            results = query_def.OpenRecordset()
+            while not results.EOF:
+                referenced_tables.append(results.Fields("ReferencedTable").Value)
+                results.MoveNext()
+            results.Close()
+        except Exception as e:
+            print(f"Error retrieving relationships for {table_name}: {e}")
+
+        return referenced_tables
+
+    def resolve_dependencies(self, export_list):
+        export_set = set(export_list)
+        added_tables = set()
+        while True:
+            new_tables = set()
+            for table in list(export_set):
+                referenced = self.get_referenced_tables(table)
+                for ref_table in referenced:
+                    if ref_table not in export_set:
+                        new_tables.add(ref_table)
+            if not new_tables:
+                break
+            export_set.update(new_tables)
+            added_tables.update(new_tables)
+
+        return list(export_set), list(added_tables)
+
+    def export_prepare(self):
+        df = self.tree.df
+        export_list = df[df.iloc[:, 1] == "✔"]["table"].to_list()
+        upload_list = df[df.iloc[:, 2] == "✔"]["table"].to_list()
+        final_list, added_tables = self.resolve_dependencies(export_list)
+
+        if added_tables:
+            added_tables_str = "\n".join(added_tables)
+            message = (
+                "The following tables were added to ensure database integrity:\n\n"
+                f"{added_tables_str}\n\n"
+                "Do you want to continue the export?"
+            )
+            if not messagebox.askyesno("Integrity Check", message):
+                return False
         expath = self.db_path.get().split('/')
         fname = expath[-1]
         catalog = "/".join(expath[:-1])
         output_sql_path = f"{catalog}/{'_'.join(fname.split('.')[:-1])}.sql"
-        with (open(output_sql_path, "w", encoding="utf-8") as sql_file):
-            for table in self.db.TableDefs:
-                if not table.Name.startswith("MSys"):
-                    # ********** TableDefs("name") get object by name*************
-                    sql_file.write(f"-- Table: {table.Name}\n")
-                    sql_file.write(f"CREATE TABLE '{table.Name}' (\n")
-                    column_definitions = []
-                    for field in table.Fields:
-                        cNull = 'NOT NULL' if field.Required else ''
-                        fSize = f"({field.Size})" if field.Size else ''
-                        column_definitions.append(
-                            f" '{field.Name}'"
-                            f" {self.svars['dao_types'].get(field.Type, 'Unknown')}{fSize}"
-                            f" {cNull}"
-                        )
-                    relationships_query = """
-                            SELECT szObject AS FK_Table,
-                                   szColumn AS FK_Column,
-                                   szReferencedObject AS PK_Table,
-                                   szReferencedColumn AS PK_Column
-                            FROM MSysRelationships
-                            WHERE szObject = ?
-                            """
-                    query_def = self.db.CreateQueryDef("", relationships_query)
-                    query_def.Parameters(0).Value = table.Name
-                    results = query_def.OpenRecordset()
-                    while not results.EOF:
-                        fk_column = results.Fields("FK_Column").Value
-                        pk_table = results.Fields("PK_Table").Value
-                        pk_column = results.Fields("PK_Column").Value
-                        column_definitions.append(f" FOREIGN KEY ({fk_column})"
-                                                  f" REFERENCES {pk_table}({pk_column})"
-                                                  )
-                        results.MoveNext()
-                    results.Close()
-                    column_primkeys = []
-                    for index in table.Indexes:
-                        if index.Primary:
-                            column_primkeys.append(index.Fields[0].Name)
-                    if len(column_primkeys):
-                        keysStr = ",".join(column_primkeys)
-                        column_definitions.append(f" PRIMARY KEY ({keysStr} AUTOINCREMENT)")
-                    sql_file.write(",\n".join(column_definitions))
+
+        return final_list, upload_list, output_sql_path
+
+    def export(self):
+        export_lists = self.export_prepare()
+        if not export_lists:
+            return
+
+        with (open(export_lists[2], "w", encoding="utf-8") as sql_file):
+            for tab_name in export_lists[0]:
+                table = self.db.TableDefs(tab_name)
+                sql_file.write(f"-- Table: {table.Name}\n")
+                sql_file.write(f"CREATE TABLE '{table.Name}' (\n")
+                column_definitions = []
+                for field in table.Fields:
+                    cNull = 'NOT NULL' if field.Required else ''
+                    fSize = f"({field.Size})" if field.Size else ''
+                    column_definitions.append(
+                        f" '{field.Name}'"
+                        f" {self.svars['dao_types'].get(field.Type, 'Unknown')}{fSize}"
+                        f" {cNull}"
+                    )
+                column_primkeys = []
+                for index in table.Indexes:
+                    if index.Primary:
+                        column_primkeys.append(index.Fields[0].Name)
+                if len(column_primkeys):
+                    keysStr = ",".join(column_primkeys)
+                    column_definitions.append(f" PRIMARY KEY ({keysStr} AUTOINCREMENT)")
+                relationships_query = """
+                                            SELECT szObject AS FK_Table,
+                                                   szColumn AS FK_Column,
+                                                   szReferencedObject AS PK_Table,
+                                                   szReferencedColumn AS PK_Column
+                                            FROM MSysRelationships
+                                            WHERE szObject = ?
+                                            """
+                query_def = self.db.CreateQueryDef("", relationships_query)
+                query_def.Parameters(0).Value = table.Name
+                results = query_def.OpenRecordset()
+                while not results.EOF:
+                    fk_column = results.Fields("FK_Column").Value
+                    pk_table = results.Fields("PK_Table").Value
+                    pk_column = results.Fields("PK_Column").Value
+                    column_definitions.append(f" FOREIGN KEY ({fk_column})"
+                                              f" REFERENCES {pk_table}({pk_column})"
+                                              )
+                    results.MoveNext()
+                results.Close()
+                sql_file.write(",\n".join(column_definitions))
+                sql_file.write("\n);\n\n")
+
+                if table.Name in export_lists[1]:
+                    ref_columns = [field.Name for field in table.Fields]
+                    sql_file.write(f"-- Filling data for {table.Name}\n")
+                    sql_file.write(f"INSERT INTO '{table.Name}' ({', '.join(ref_columns)}) VALUES\n")
+                    recordset = self.db.OpenRecordset(f"SELECT * FROM [{table.Name}]")
+                    while not recordset.EOF:
+                        values = []
+                        for column in ref_columns:
+                            value = recordset.Fields(column).Value
+                            if value is None:
+                                values.append("NULL")
+                            elif isinstance(value, str):
+                                values.append(f"'{str(value)}'".replace("'", "''"))
+                            elif isinstance(value, (int, float)):
+                                values.append(str(value))
+                            else:
+                                values.append(f"'{str(value)}'")
+                        insert_query = f" ({', '.join(values)});\n"
+                        sql_file.write(insert_query)
+                        recordset.MoveNext()
+                    recordset.Close()
                     sql_file.write("\n);\n\n")
-                    if table.Name.startswith("Ref_"):
-                        ref_columns = [field.Name for field in table.Fields]
-                        sql_file.write(f"-- Filling data for {table.Name}\n")
-                        sql_file.write(f"INSERT INTO '{table.Name}' ({', '.join(ref_columns)}) VALUES\n")
-                        recordset = self.db.OpenRecordset(f"SELECT * FROM [{table.Name}]")
-                        while not recordset.EOF:
-                            values = []
-                            for column in ref_columns:
-                                value = recordset.Fields(column).Value
-                                if value is None:
-                                    values.append("NULL")
-                                elif isinstance(value, str):
-                                    values.append(f"'{str(value)}'".replace("'", "''"))
-                                elif isinstance(value, (int, float)):
-                                    values.append(str(value))
-                                else:
-                                    values.append(f"'{str(value)}'")
-                            insert_query = f" ({', '.join(values)});\n"
-                            sql_file.write(insert_query)
-                            recordset.MoveNext()
-                        recordset.Close()
-                        sql_file.write("\n);\n\n")
-        print(f"SQL export completed. File saved as {output_sql_path}")
+
+            messagebox.showinfo("SQL export completed!",f"File saved as {export_lists[2]}")
 
 
 if __name__ == "__main__":
