@@ -4,19 +4,21 @@
 
 This project provides a Python-based utility to export the structure and data of MS Access databases (`.mdb`, `.accdb`) into an SQL script. The tool ensures the correct handling of table structures, primary keys, and foreign key relationships, allowing for a smooth migration to other SQL-based databases.
 
+![Kiva Dashboard](screenshots/access_sql_export_screen_00.jpg)
 ## Features
 
 - **Table Structure Export**: Generate `CREATE TABLE` statements with correct data types and constraints.
 - **Primary and Foreign Keys**: Automatically extract and define primary and foreign key relationships.
-- **Data Export**: Populate SQL scripts with table data, including support for reference tables (`Ref_*`).
-- **Encoding Support**: Outputs scripts in UTF-8 for maximum compatibility.
+- **Data Export**: Populate SQL scripts with export table data.
+- **Substantive Treeview class** With filtering block via Pandas DataFrame
+- **Quick render class** Allows to render a tk or ttk elements without explicitly objects definitions
 - **Customizable DAO Integration**: Uses the `DAO.DBEngine.120` driver for precise MS Access database interactions.
 
 ## Usage
 
 1. Run the script.
 2. Use the file dialog to select your MS Access database file (`.mdb`, `.accdb`).
-3. The tool generates an SQL file (`export_msaccess.sql`) with the full database structure and data.
+3. The tool generates an SQL file with the full database structure and data.
 4. Review or modify the exported script as needed, then import it into your SQL database.
 
 #### **Important Note: Access Permissions**
@@ -48,19 +50,16 @@ If you do not have access to modify permissions, please contact your database ad
 
 ## Planned Features
 
-- **Graphical User Interface (GUI)**: 
-  - User-friendly interface for non-technical users.
+- [x] **Graphical User Interface (GUI)** *(Done)*:  
+  - User-friendly interface for non-technical users.  
   - Interactive selection of tables and data to export.
 
-- **Data Integrity Control**: 
+- [x] **Data Integrity Control** *(Done)*:  
   - Include checks and validation to ensure consistent and complete data exports.
 
-- **Advanced Export Options**: 
-  - Custom filters for rows and columns.
+- [x] **Advanced Export Options** *(Done)*:  
+  - Custom filters for rows and columns.  
   - Selective inclusion or exclusion of relationships and constraints.
-
-- **Enhanced SQL Compatibility**: 
-  - Configurable output for different SQL dialects (e.g., MySQL, PostgreSQL, SQLite).
 
 ## Example SQL Output
 
