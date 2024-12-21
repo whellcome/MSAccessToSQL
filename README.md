@@ -1,18 +1,40 @@
+---
+
 # MS Access to SQL Export Tool
 
 **Easily export MS Access databases to SQL scripts!**
 
 This project provides a Python-based utility to export the structure and data of MS Access databases (`.mdb`, `.accdb`) into an SQL script. The tool ensures the correct handling of table structures, primary keys, and foreign key relationships, allowing for a smooth migration to other SQL-based databases.
 
-![Kiva Dashboard](screenshots/access_sql_export_screen_00.jpg)
+![MS Access export tool](screenshots/access_sql_export_screen_00.jpg)
+
 ## Features
 
 - **Table Structure Export**: Generate `CREATE TABLE` statements with correct data types and constraints.
 - **Primary and Foreign Keys**: Automatically extract and define primary and foreign key relationships.
 - **Data Export**: Populate SQL scripts with export table data.
-- **Substantive Treeview class** With filtering block via Pandas DataFrame
-- **Quick render class** Allows to render a tk or ttk elements without explicitly objects definitions
+- **Substantive Treeview class**: With filtering block via Pandas DataFrame.
+- **Quick render class**: Allows rendering of `tk` or `ttk` elements without explicit object definitions.
 - **Customizable DAO Integration**: Uses the `DAO.DBEngine.120` driver for precise MS Access database interactions.
+
+## Who Needs This Tool?
+
+This tool is ideal for professionals who deal with MS Access databases and need to migrate, integrate, or back up their data in SQL format:
+
+- **Data Engineers**: Simplify ETL (Extract, Transform, Load) processes by seamlessly incorporating MS Access databases into modern SQL-based systems. See [issue #16](issues/16) for our plans to support command-line execution, making automation even easier.
+  
+- **Database Administrators**: Save time and effort when exporting complex MS Access databases while maintaining referential integrity. The planned feature for [saving and loading configurations](issues/17) will make repetitive export tasks effortless.
+  
+- **Developers**: Work with legacy MS Access data using familiar SQL scripts for modern web and software development.
+
+### Related Issues:
+
+1. **[Command-line Execution (#16)](issues/16)**  
+   - Automate the export process to support batch jobs and integration with enterprise ETL pipelines. Ideal for organizations heavily reliant on MS Access databases.
+
+2. **[Save and Load Configurations (#2)](issues/17)**  
+   - Add functionality to save the current export setup (e.g., database path, selected tables) and reload it in future sessions, enabling quick and consistent operations.
+
 
 ## Usage
 
