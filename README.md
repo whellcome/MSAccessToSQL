@@ -1,4 +1,3 @@
----
 
 # MS Access to SQL Export Tool
 
