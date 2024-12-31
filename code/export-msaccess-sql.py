@@ -37,10 +37,12 @@ class WidgetsRender:
 
 
 class TreeviewDataFrame(WidgetsRender, ttk.Treeview):
+
     def __init__(self, parent, render_params=None, *args, **kwargs):
         super().__init__(render_params, parent, *args, **kwargs)
         self.df = pd.DataFrame()
         self.filtered_df = pd.DataFrame()
+        self.bind("<Button-1>", self.toggle_cell)
 
     def column(self, column, option=None, **kw):
         """
@@ -124,6 +126,27 @@ class TreeviewDataFrame(WidgetsRender, ttk.Treeview):
                 self.df = self.df[~(self.df[list(self.df.columns)] == values).all(axis=1)]
         super().delete(*items)
 
+    @staticmethod
+    def flag_inverse(value: str) -> str:
+        flag_values = {
+            " ": "✔",
+            "✔": " "
+        }
+        return flag_values[value]
+
+    def toggle_cell(self, event):
+        """Handles cell clicks to change flags."""
+        if self.identify_region(event.x, event.y) != "cell":
+            return
+        col_num = int(self.identify_column(event.x).replace("#", "")) - 1
+        if not col_num:
+            return
+        col_name = self.cget("columns")[col_num]
+        item = self.identify_row(event.y)
+        current_value = self.set(item, col_name)
+        self.set(item, col_name, self.flag_inverse(current_value))
+        self.event_generate("<<TreeToggleCell>>")
+
     def rebuild_tree(self, dataframe=None):
         if dataframe is None:
             dataframe = self.df
@@ -131,7 +154,7 @@ class TreeviewDataFrame(WidgetsRender, ttk.Treeview):
         for index, row in dataframe.iterrows():
             self.insert("", "end", iid=index, values=row.to_list())
 
-    def filter_by_name(self, keyword):
+    def filter_by_name(self, keyword=""):
         """Filter rows based on a keyword and update Treeview."""
         self.filtered_df = self.df[self.df[self.df.columns[0]].str.contains(keyword, case=False)].copy()
         self.rebuild_tree(self.filtered_df)
@@ -206,7 +229,7 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
         self.frame1 = ttk.Frame(self, width=100, borderwidth=1, relief="solid", padding=(2, 2))
         self.tree = TreeviewDataFrame(self.frame1, columns=("table", "export", "data"), show="headings")
         self.tree.bind("<<TreeFilterUpdated>>", self.on_filter_updated)
-        self.tree.bind("<Button-1>", self.toggle_cell)
+        self.tree.bind("<<TreeToggleCell>>", self.on_toggle_cell)
         self.scrollbar = ttk.Scrollbar(self.frame1, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=self.scrollbar.set)
         self.create_widgets()
@@ -243,8 +266,8 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
 
     def make_tree(self):
         self.tree.heading("table", text="Table")
-        self.tree.heading("export", text="Export")
-        self.tree.heading("data", text="Upload")
+        self.tree.heading("export", text="Export Table")
+        self.tree.heading("data", text="Upload Data")
         self.tree.column("table", width=150, anchor="w")
         self.tree.column("export", width=50, anchor="center")
         self.tree.column("data", width=50, anchor="center")
@@ -261,11 +284,10 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
         self.tree.tag_configure("normal")
         self.tree.tag_configure("export", background="#fff0f0")
 
-    def update_data_column(self, event):
+    def update_data_column(self):
         """..."""
         for item_id in self.tree.get_children():
-            is_red = self.tree.set(item_id, "export")
-            if is_red == "✔":
+            if self.tree.set(item_id, "export") == "✔":
                 self.tree.item(item_id, tags=("export",))
             else:
                 self.tree.item(item_id, tags=("normal",))
@@ -274,26 +296,9 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
         self.svars['check_all'].set(self.tree.all_checked(1))
         self.svars['check_all_upload'].set(self.tree.all_checked(2))
 
-    def toggle_cell(self, event):
+    def on_toggle_cell(self, event):
         """Handles cell clicks to change flags."""
-        tree = self.tree
-        region = tree.identify_region(event.x, event.y)
-        if region != "cell":
-            return
-        col = tree.identify_column(event.x)
-        item = tree.identify_row(event.y)
-        if col == "#2":
-            current_value = tree.set(item, "export")
-            tree.set(item, "export", " " if current_value == "✔" else "✔")
-            if current_value == "✔":
-                tree.set(item, "data", " ")
-
-        elif col == "#3":
-            current_value = tree.set(item, "data")
-            if tree.set(item, "export") == "✔":
-                tree.set(item, "data", " " if current_value == "✔" else "✔")
-
-        self.update_data_column(None)
+        self.update_data_column()
         self.svars['check_all'].set(self.tree.all_checked(1))
         self.svars['check_all_upload'].set(self.tree.all_checked(2))
 
@@ -526,7 +531,7 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
                     recordset.Close()
                     sql_file.write("\n);\n\n")
 
-            messagebox.showinfo("SQL export completed!",f"File saved as {export_lists[2]}")
+            messagebox.showinfo("SQL export completed!", f"File saved as {export_lists[2]}")
 
 
 if __name__ == "__main__":
