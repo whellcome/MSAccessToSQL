@@ -43,6 +43,15 @@ class TreeviewDataFrame(WidgetsRender, ttk.Treeview):
         self.df = pd.DataFrame()
         self.filtered_df = pd.DataFrame()
         self.bind("<Button-1>", self.toggle_cell)
+        self.svars = {"flag_symbol": {
+            "check": "✔",
+            "uncheck": " "
+        }}
+        self.svars["flag_values"] = {
+            self.svars["flag_symbol"]["uncheck"]: self.svars["flag_symbol"]["check"],
+            self.svars["flag_symbol"]["check"]: self.svars["flag_symbol"]["uncheck"]
+        }
+
 
     def column(self, column, option=None, **kw):
         """
@@ -126,12 +135,8 @@ class TreeviewDataFrame(WidgetsRender, ttk.Treeview):
                 self.df = self.df[~(self.df[list(self.df.columns)] == values).all(axis=1)]
         super().delete(*items)
 
-    @staticmethod
-    def flag_inverse(value: str) -> str:
-        flag_values = {
-            " ": "✔",
-            "✔": " "
-        }
+    def flag_inverse(self, value: str) -> str:
+        flag_values = self.svars["flag_values"]
         return flag_values[value]
 
     def toggle_cell(self, event):
@@ -192,8 +197,30 @@ class TreeviewDataFrame(WidgetsRender, ttk.Treeview):
                     dict(row=0, column=3, padx=5, pady=5))
         return widget_frame
 
-    def checkboxes_widget(self):
-        pass
+    def checkbox_widget(self, parent):
+
+        def toggle_all(ind):
+            checked = self.svars['check_all'][ind].get()
+            if not checked:
+                self.svars['check_all'][ind].set(False)
+            for item in self.get_children():
+                values = list(self.item(item, "values"))
+                if checked:
+                    values[ind] = self.svars['flag_symbol']['check']
+                else:
+                    values[ind] = self.svars['flag_symbol']['uncheck']
+                self.item(item, values=values)
+
+        widget_frame = ttk.Frame(parent, padding=(2, 2))
+        self.svars["check_all"] = {}
+        for i, col in  enumerate(self.cget("columns")[1:]):
+            ind = i+1
+            self.svars["check_all"][ind] = tk.IntVar(value=0)
+            box_text = f"Check all {self.heading(col)['text'] if self.heading(col)['text'] else col}"
+            render_params = dict(row=0, column=ind, padx=20)
+            self.render(ttk.Checkbutton(widget_frame, text=box_text, variable=self.svars["check_all"][ind],
+                                        command=lambda k=ind: toggle_all(k)), render_params)
+        return widget_frame
 
 
 class GetWidgetsFrame(WidgetsRender, ttk.Frame):
@@ -255,14 +282,17 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
         self.render(self.frame0, dict(row=3, column=0, columnspan=3, sticky="e"))
         self.render(self.tree.filter_widget(self.frame0),
                     dict(row=0, column=0, columnspan=3, padx=5, pady=5, sticky="ew"))
-        self.render(tk.Label(self.frame0, text=" ", width=43),
-                    dict(row=1, column=0, columnspan=2, pady=5))
-        self.svars['check_all'] = tk.IntVar(value=0)
-        self.render(ttk.Checkbutton(self.frame0, text="Check all to Export", variable=self.svars['check_all'],
-                                    command=self.toggle_all_export), dict(row=1, column=2, padx=20))
-        self.svars['check_all_upload'] = tk.IntVar(value=0)
-        self.render(ttk.Checkbutton(self.frame0, text="Check all to Upload", variable=self.svars['check_all_upload'],
-                                    command=self.toggle_all_upload, ), dict(row=1, column=3, padx=20))
+        self.render(self.tree.checkbox_widget(self.frame0),
+                    dict(row=4, column=0, columnspan=3, padx=5, pady=5, sticky="e"))
+
+        # self.render(tk.Label(self.frame0, text=" ", width=43),
+        #             dict(row=1, column=0, columnspan=2, pady=5))
+        # self.svars['check_all'] = tk.IntVar(value=0)
+        # self.render(ttk.Checkbutton(self.frame0, text="Check all to Export", variable=self.svars['check_all'],
+        #                             command=self.toggle_all_export), dict(row=1, column=2, padx=20))
+        # self.svars['check_all_upload'] = tk.IntVar(value=0)
+        # self.render(ttk.Checkbutton(self.frame0, text="Check all to Upload", variable=self.svars['check_all_upload'],
+        #                             command=self.toggle_all_upload, ), dict(row=1, column=3, padx=20))
 
     def make_tree(self):
         self.tree.heading("table", text="Table")
@@ -299,8 +329,8 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
     def on_toggle_cell(self, event):
         """Handles cell clicks to change flags."""
         self.update_data_column()
-        self.svars['check_all'].set(self.tree.all_checked(1))
-        self.svars['check_all_upload'].set(self.tree.all_checked(2))
+        # self.svars['check_all'].set(self.tree.all_checked(1))
+        # self.svars['check_all_upload'].set(self.tree.all_checked(2))
 
     def toggle_all_export(self):
         checked = self.svars['check_all'].get()
