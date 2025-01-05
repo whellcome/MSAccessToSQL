@@ -1,8 +1,6 @@
 import tkinter as tk
+from tkinter import ttk, filedialog, messagebox
 import webbrowser
-from tkinter import filedialog, messagebox
-from tkinter import ttk
-
 import pandas as pd
 import win32com.client
 
@@ -90,7 +88,6 @@ class TreeviewDataFrame(WidgetsRender, ttk.Treeview):
     def set(self, item, column=None, value=None):
         """
             Enhanced set method for synchronization with a DataFrame.
-
             :param item: The item ID (iid) in the Treeview.
             :param column: The column name to retrieve or update.
             :param value: The value to set; if None, retrieves the current value.
@@ -109,6 +106,8 @@ class TreeviewDataFrame(WidgetsRender, ttk.Treeview):
             self.df.loc[item, column] = value
             if is_filtered:
                 self.filtered_df.loc[item, column] = value
+            ind = self.cget("columns").index(column) if not column else 0
+            self.all_checked_update(ind)
         return result
 
     def item(self, item, option=None, **kw):
@@ -123,6 +122,7 @@ class TreeviewDataFrame(WidgetsRender, ttk.Treeview):
             self.df.loc[item] = updates
             if is_filtered:
                 self.filtered_df.loc[item] = updates
+            self.all_checked_update()
         return result
 
     def delete(self, *items, inplace=False):
@@ -168,9 +168,20 @@ class TreeviewDataFrame(WidgetsRender, ttk.Treeview):
         """Filter updated event."""
         self.event_generate("<<TreeFilterUpdated>>")
 
-    def all_checked(self, column):
+    def all_checked_event_evoke(self):
+        self.event_generate("<<TreeCheckAllUpdated>>")
+
+    def is_all_checked(self, column):
         df = self.filtered_df if len(self.filtered_df) else self.df
-        return not len(df[df.iloc[:, column] == " "])
+        return not len(df[df.iloc[:, column] == self.svars["flag_symbol"]["uncheck"]])
+
+    def all_checked_update(self, column = 0):
+        if column:
+           self.svars['check_all'][column].set(self.is_all_checked(column))
+        else:
+            for i in range(1,len(self.cget("columns"))):
+                self.svars['check_all'][i].set(self.is_all_checked(i))
+        self.all_checked_event_evoke()
 
     def filter_widget(self, parent):
         widget_frame = ttk.Frame(parent, width=150, borderwidth=1, relief="solid", padding=(2, 2))
@@ -184,12 +195,14 @@ class TreeviewDataFrame(WidgetsRender, ttk.Treeview):
             if len(self.filtered_df) == len(self.df):
                 self.filtered_df = pd.DataFrame()
             self.filter_event_evoke()
+            self.all_checked_update()
 
         def clear_filter():
             self.rebuild_tree()
             filter_entry.delete(0, tk.END)
             self.filtered_df = pd.DataFrame()
             self.filter_event_evoke()
+            self.all_checked_update()
 
         self.render(ttk.Button(widget_frame, text="Filter", command=apply_filter),
                     dict(row=0, column=2, padx=5, pady=5))
@@ -199,16 +212,16 @@ class TreeviewDataFrame(WidgetsRender, ttk.Treeview):
 
     def checkbox_widget(self, parent):
 
-        def toggle_all(ind):
-            checked = self.svars['check_all'][ind].get()
+        def toggle_all(index: int):
+            checked = self.svars['check_all'][index].get()
             if not checked:
-                self.svars['check_all'][ind].set(False)
+                self.svars['check_all'][index].set(False)
             for item in self.get_children():
                 values = list(self.item(item, "values"))
                 if checked:
-                    values[ind] = self.svars['flag_symbol']['check']
+                    values[index] = self.svars['flag_symbol']['check']
                 else:
-                    values[ind] = self.svars['flag_symbol']['uncheck']
+                    values[index] = self.svars['flag_symbol']['uncheck']
                 self.item(item, values=values)
 
         widget_frame = ttk.Frame(parent, padding=(2, 2))
@@ -256,7 +269,9 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
         self.frame1 = ttk.Frame(self, width=100, borderwidth=1, relief="solid", padding=(2, 2))
         self.tree = TreeviewDataFrame(self.frame1, columns=("table", "export", "data"), show="headings")
         self.tree.bind("<<TreeFilterUpdated>>", self.on_filter_updated)
+        self.tree.bind("<<TreeCheckAllUpdated>>", self.on_check_all_updated)
         self.tree.bind("<<TreeToggleCell>>", self.on_toggle_cell)
+
         self.scrollbar = ttk.Scrollbar(self.frame1, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=self.scrollbar.set)
         self.create_widgets()
@@ -285,15 +300,6 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
         self.render(self.tree.checkbox_widget(self.frame0),
                     dict(row=4, column=0, columnspan=3, padx=5, pady=5, sticky="e"))
 
-        # self.render(tk.Label(self.frame0, text=" ", width=43),
-        #             dict(row=1, column=0, columnspan=2, pady=5))
-        # self.svars['check_all'] = tk.IntVar(value=0)
-        # self.render(ttk.Checkbutton(self.frame0, text="Check all to Export", variable=self.svars['check_all'],
-        #                             command=self.toggle_all_export), dict(row=1, column=2, padx=20))
-        # self.svars['check_all_upload'] = tk.IntVar(value=0)
-        # self.render(ttk.Checkbutton(self.frame0, text="Check all to Upload", variable=self.svars['check_all_upload'],
-        #                             command=self.toggle_all_upload, ), dict(row=1, column=3, padx=20))
-
     def make_tree(self):
         self.tree.heading("table", text="Table")
         self.tree.heading("export", text="Export Table")
@@ -312,50 +318,26 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
                   )
         style.configure("Treeview", rowheight=25)
         self.tree.tag_configure("normal")
-        self.tree.tag_configure("export", background="#fff0f0")
+        self.tree.tag_configure("selected", background="#fff0f0")
 
-    def update_data_column(self):
+    def update_column_style(self):
         """..."""
         for item_id in self.tree.get_children():
-            if self.tree.set(item_id, "export") == "✔":
-                self.tree.item(item_id, tags=("export",))
+            if "✔" in self.tree.item(item_id, "values"):
+                self.tree.item(item_id, tags=("selected",))
             else:
                 self.tree.item(item_id, tags=("normal",))
 
     def on_filter_updated(self, event):
-        self.svars['check_all'].set(self.tree.all_checked(1))
-        self.svars['check_all_upload'].set(self.tree.all_checked(2))
+        pass
+
+    def on_check_all_updated(self, event):
+        self.update_column_style()
 
     def on_toggle_cell(self, event):
         """Handles cell clicks to change flags."""
-        self.update_data_column()
-        # self.svars['check_all'].set(self.tree.all_checked(1))
-        # self.svars['check_all_upload'].set(self.tree.all_checked(2))
+        self.update_column_style()
 
-    def toggle_all_export(self):
-        checked = self.svars['check_all'].get()
-        if not checked:
-            self.svars['check_all_upload'].set(False)
-        for item in self.tree.get_children():
-            values = list(self.tree.item(item, "values"))
-            if checked:
-                values[1] = "✔"
-            else:
-                values[1] = " "
-                values[2] = " "
-            self.tree.item(item, values=values)
-
-    def toggle_all_upload(self):
-        checked = self.svars['check_all_upload'].get()
-        for item in self.tree.get_children():
-            values = list(self.tree.item(item, "values"))
-            if checked:
-                values[2] = "✔" if values[1] == "✔" else " "
-            else:
-                values[2] = " "
-            self.tree.item(item, values=values)
-        if not self.svars['check_all'].get():
-            self.svars['check_all_upload'].set(False)
 
     def btn_run(self):
         """
