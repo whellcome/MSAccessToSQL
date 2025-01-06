@@ -18,19 +18,39 @@ class WidgetsRender:
             render_params = dict(sticky="ew", padx=5, pady=2)
         self.__render_params = render_params
 
-    def render(self, obj=None, render_params=None):
+    def param_prepare(self, pack_params, func="grid"):
+        pack_params = pack_params if pack_params else {}
+        united_pack_params = self.__render_params.copy()
+        if func == "pack":
+            if "sticky" in united_pack_params:
+                united_pack_params["anchor"] = united_pack_params.pop("sticky")
+        elif func == "place":
+            if "sticky" in united_pack_params:
+                united_pack_params["anchor"] = united_pack_params.pop("sticky")
+        united_pack_params.update(pack_params)
+        print(united_pack_params)
+        return united_pack_params
+
+    def rgrid(self, obj=None, render_params=None):
         """
         Perform element creation and rendering in one command. Without creating a variable unnecessarily.
         Combines general parameters for the arrangement of elements and parameters for a specific element.
         :param obj: Element to rendering
-        :param render_params: Dictionary with element parameters
+        :param pack_params: Dictionary with element parameters
         :return: Rendered element
         """
         if obj:
-            render_params = render_params if render_params else {}
-            united_pack_params = self.__render_params.copy()
-            united_pack_params.update(render_params)
-            obj.grid(united_pack_params)
+            obj.grid(self.param_prepare(render_params,"grid"))
+        return obj
+
+    def rpack(self, obj=None, render_params=None):
+        if obj:
+            obj.grid(self.param_prepare(render_params, "pack"))
+        return obj
+
+    def rplace(self, obj=None, render_params=None):
+        if obj:
+            obj.grid(self.param_prepare(render_params, "place"))
         return obj
 
 
@@ -63,7 +83,6 @@ class TreeviewDataFrame(WidgetsRender, ttk.Treeview):
     def insert(self, parent, index, iid=None, **kw):
         """
                Inserts a new row into the Treeview and synchronizes it with the DataFrame.
-
                :param parent: Parent node for Treeview (usually "" for root-level items).
                :param index: Position to insert the item.
                :param iid: Unique identifier for the row. If None, Treeview generates one.
@@ -185,10 +204,10 @@ class TreeviewDataFrame(WidgetsRender, ttk.Treeview):
 
     def filter_widget(self, parent):
         widget_frame = ttk.Frame(parent, width=150, borderwidth=1, relief="solid", padding=(2, 2))
-        self.render(tk.Label(widget_frame, text="Filter by table name:", font=("Helvetica", 9, "bold")),
-                    dict(row=0, column=0, pady=5))
+        self.rgrid(tk.Label(widget_frame, text="Filter by table name:", font=("Helvetica", 9, "bold")),
+                   dict(row=0, column=0, pady=5))
         filter_entry = tk.Entry(widget_frame)
-        self.render(filter_entry, dict(row=0, column=1, padx=5, pady=5, sticky="ew"))
+        self.rgrid(filter_entry, dict(row=0, column=1, padx=5, pady=5, sticky="ew"))
 
         def apply_filter():
             self.filter_by_name(filter_entry.get())
@@ -204,10 +223,10 @@ class TreeviewDataFrame(WidgetsRender, ttk.Treeview):
             self.filter_event_evoke()
             self.all_checked_update()
 
-        self.render(ttk.Button(widget_frame, text="Filter", command=apply_filter),
-                    dict(row=0, column=2, padx=5, pady=5))
-        self.render(ttk.Button(widget_frame, text="Restore", command=clear_filter),
-                    dict(row=0, column=3, padx=5, pady=5))
+        self.rgrid(ttk.Button(widget_frame, text="Filter", command=apply_filter),
+                   dict(row=0, column=2, padx=5, pady=5))
+        self.rgrid(ttk.Button(widget_frame, text="Restore", command=clear_filter),
+                   dict(row=0, column=3, padx=5, pady=5))
         return widget_frame
 
     def checkbox_widget(self, parent):
@@ -231,8 +250,8 @@ class TreeviewDataFrame(WidgetsRender, ttk.Treeview):
             self.svars["check_all"][ind] = tk.IntVar(value=0)
             box_text = f"Check all {self.heading(col)['text'] if self.heading(col)['text'] else col}"
             render_params = dict(row=0, column=ind, padx=20)
-            self.render(ttk.Checkbutton(widget_frame, text=box_text, variable=self.svars["check_all"][ind],
-                                        command=lambda k=ind: toggle_all(k)), render_params)
+            self.rgrid(ttk.Checkbutton(widget_frame, text=box_text, variable=self.svars["check_all"][ind],
+                                       command=lambda k=ind: toggle_all(k)), render_params)
         return widget_frame
 
 
@@ -240,7 +259,6 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
     """
     The main class of the program is responsible for constructing the form and interaction of elements
     """
-
     def __init__(self, render_params=None, *args, **options):
         """
         Initialization of the Frame, description of the main elements
@@ -278,27 +296,27 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
 
     def create_widgets(self):
         """Building the main widgets at the beginning of program execution"""
-        self.render(self)
-        self.render(tk.Label(self, text="MS Access to SQL Export Tool", font=("Helvetica", 14)),
-                    dict(row=0, column=0, columnspan=3, pady=5))
-        self.render(self.label1, dict(row=1, column=0, columnspan=3))
-        self.render(tk.Button(self, text="MS Access File Open", command=self.btn_openf),
-                    dict(row=2, column=0, columnspan=2))
-        self.render(tk.Button(self, text=" Exit ", command=self.btn_exit), dict(row=2, column=2, columnspan=2))
-        self.render(self.frame1, dict(row=4, column=0, columnspan=3))
-        self.render(self.tree, dict(row=0, column=0, pady=5))
-        self.render(self.scrollbar, dict(row=0, column=3, sticky="ns"))
-        self.render(tk.Button(self, text=" Run! ", command=self.btn_run, font=("Helvetica", 12)),
-                    dict(row=5, column=0, columnspan=3, ))
+        self.rgrid(self)
+        self.rgrid(tk.Label(self, text="MS Access to SQL Export Tool", font=("Helvetica", 14)),
+                   dict(row=0, column=0, columnspan=3, pady=5))
+        self.rgrid(self.label1, dict(row=1, column=0, columnspan=3))
+        self.rgrid(tk.Button(self, text="MS Access File Open", command=self.btn_openf),
+                   dict(row=2, column=0, columnspan=2))
+        self.rgrid(tk.Button(self, text=" Exit ", command=self.btn_exit), dict(row=2, column=2, columnspan=2))
+        self.rgrid(self.frame1, dict(row=4, column=0, columnspan=3))
+        self.rgrid(self.tree, dict(row=0, column=0, pady=5))
+        self.rgrid(self.scrollbar, dict(row=0, column=3, sticky="ns"))
+        self.rgrid(tk.Button(self, text=" Run! ", command=self.btn_run, font=("Helvetica", 12)),
+                   dict(row=5, column=0, columnspan=3, ))
 
     def recreate_widgets(self):
-        self.render(self.tree, dict(row=0, column=0, pady=5))
-        self.render(self.scrollbar, dict(row=0, column=3, sticky="ns"))
-        self.render(self.frame0, dict(row=3, column=0, columnspan=3, sticky="e"))
-        self.render(self.tree.filter_widget(self.frame0),
-                    dict(row=0, column=0, columnspan=3, padx=5, pady=5, sticky="ew"))
-        self.render(self.tree.checkbox_widget(self.frame0),
-                    dict(row=4, column=0, columnspan=3, padx=5, pady=5, sticky="e"))
+        self.rgrid(self.tree, dict(row=0, column=0, pady=5))
+        self.rgrid(self.scrollbar, dict(row=0, column=3, sticky="ns"))
+        self.rgrid(self.frame0, dict(row=3, column=0, columnspan=3, sticky="e"))
+        self.rgrid(self.tree.filter_widget(self.frame0),
+                   dict(row=0, column=0, columnspan=3, padx=5, pady=5, sticky="ew"))
+        self.rgrid(self.tree.checkbox_widget(self.frame0),
+                   dict(row=4, column=0, columnspan=3, padx=5, pady=5, sticky="e"))
 
     def make_tree(self):
         self.tree.heading("table", text="Table")
@@ -338,7 +356,6 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
         """Handles cell clicks to change flags."""
         self.update_column_style()
 
-
     def btn_run(self):
         """
         Implementation of the "Run" button
@@ -374,22 +391,22 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
         warning_window.geometry("345x185")
         warning_window.resizable(False, False)
         spad = 7
-        self.render(ttk.Label(warning_window, text="Access Permission Error", font=("Helvetica", 14)),
-                    dict(row=0, column=0, pady=spad, columnspan=3, sticky="ns"))
+        self.rgrid(ttk.Label(warning_window, text="Access Permission Error", font=("Helvetica", 14)),
+                   dict(row=0, column=0, pady=spad, columnspan=3, sticky="ns"))
         message = (
             "The MS Access Export Tool requires access to system tables "
             "MSysObjects and MSysRelationships. Please refer to the "
             "documentation for steps to grant the necessary permissions."
         )
-        self.render(ttk.Label(warning_window, text=message, wraplength=350, justify="center"),
-                    dict(row=1, column=0, columnspan=3, pady=spad))
+        self.rgrid(ttk.Label(warning_window, text=message, wraplength=350, justify="center"),
+                   dict(row=1, column=0, columnspan=3, pady=spad))
         link = ttk.Label(
             warning_window, text="Click here for documentation", foreground="blue", cursor="hand2"
         )
-        self.render(link, dict(row=2, column=0, columnspan=3, pady=spad, sticky="ns"))
+        self.rgrid(link, dict(row=2, column=0, columnspan=3, pady=spad, sticky="ns"))
         link.bind("<Button-1>", open_link)
-        self.render(tk.Button(warning_window, text=" Close ", command=warning_window.destroy),
-                    dict(row=3, column=1, pady=spad))
+        self.rgrid(tk.Button(warning_window, text=" Close ", command=warning_window.destroy),
+                   dict(row=3, column=1, pady=spad))
         warning_window.transient()
         warning_window.grab_set()
         warning_window.mainloop()
