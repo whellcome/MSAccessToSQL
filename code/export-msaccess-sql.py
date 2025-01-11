@@ -28,10 +28,9 @@ class WidgetsRender:
             if "sticky" in united_pack_params:
                 united_pack_params["anchor"] = united_pack_params.pop("sticky")
         united_pack_params.update(pack_params)
-        print(united_pack_params)
         return united_pack_params
 
-    def rgrid(self, obj=None, render_params=None):
+    def rgrid(self, obj:tk.Tk, render_params=None):
         """
         Perform element creation and rendering in one command. Without creating a variable unnecessarily.
         Combines general parameters for the arrangement of elements and parameters for a specific element.
