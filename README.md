@@ -34,6 +34,28 @@ This tool is ideal for professionals who deal with MS Access databases and need 
 2. **[Save and Load Configurations (#17)](https://github.com/whellcome/MSAccessToSQL/issues/17)**  
    - Add functionality to save the current export setup (e.g., database path, selected tables) and reload it in future sessions, enabling quick and consistent operations.
 
+Here’s the "Important" section translated into English:
+
+---
+
+## Install
+
+   ```bash
+   git clone https://github.com/whellcome/MSAccessToSQL
+   cd MSAccessToSQL
+   pip install -r requirements.txt
+   ```
+
+### Important
+
+This project relies on the `tkextras` module, which enhances functionality for working with the `tkinter` interface. The `tkextras` module, along with other dependencies, is included in the `requirements.txt` file. 
+
+**Note:** If the `tkextras` module does not install automatically, you can manually install it using the following command:
+
+
+   ```bash
+   pip install git+https://github.com/whellcome/tkextras.git
+   ```
 
 ## Usage
 

@@ -1,0 +1,3 @@
+tkextras @ git+https://github.com/whellcome/tkextras.git
+pandas>=1.3.0
+pywin32>=300
