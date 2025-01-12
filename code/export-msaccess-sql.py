@@ -3,6 +3,8 @@ from tkinter import ttk, filedialog, messagebox
 import webbrowser
 import win32com.client
 from tkextras import *
+import pandas as pd
+import io
 
 
 class GetWidgetsFrame(WidgetsRender, ttk.Frame):
@@ -39,7 +41,7 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
         self.tree.bind("<<TreeFilterUpdated>>", self.on_filter_updated)
         self.tree.bind("<<TreeCheckAllUpdated>>", self.on_check_all_updated)
         self.tree.bind("<<TreeToggleCell>>", self.on_toggle_cell)
-
+        self.json_str = ""
         self.scrollbar = ttk.Scrollbar(self.frame1, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=self.scrollbar.set)
         self.create_widgets()
@@ -56,8 +58,12 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
         self.rgrid(self.frame1, dict(row=4, column=0, columnspan=3))
         self.rgrid(self.tree, dict(row=0, column=0, pady=5))
         self.rgrid(self.scrollbar, dict(row=0, column=3, sticky="ns"))
+        self.rgrid(tk.Button(self, text=" Save config ", command=self.save_config, font=("Helvetica", 12)),
+                   dict(row=5, column=0, ))
+        self.rgrid(tk.Button(self, text=" Load config ", command=self.load_config, font=("Helvetica", 12)),
+                   dict(row=5, column=2, ))
         self.rgrid(tk.Button(self, text=" Run! ", command=self.btn_run, font=("Helvetica", 12)),
-                   dict(row=5, column=0, columnspan=3, ))
+                   dict(row=6, column=0, columnspan=3, ))
 
     def recreate_widgets(self):
         self.rgrid(self.tree, dict(row=0, column=0, pady=5))
@@ -237,6 +243,15 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
         output_sql_path = f"{catalog}/{'_'.join(fname.split('.')[:-1])}.sql"
 
         return final_list, upload_list, output_sql_path
+
+    def save_config(self):
+        df = self.tree.df
+        self.json_str = df.to_json()
+
+    def load_config(self):
+        self.tree.df =pd.read_json(io.StringIO(self.json_str))
+        self.tree.rebuild_tree()
+        self.update_column_style()
 
     def export(self):
         export_lists = self.export_prepare()
