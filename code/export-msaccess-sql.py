@@ -5,6 +5,7 @@ import win32com.client
 from tkextras import *
 import pandas as pd
 import io
+import json
 
 
 class GetWidgetsFrame(WidgetsRender, ttk.Frame):
@@ -34,6 +35,7 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
                 12: "Text"
             }}
         self.db_path = tk.StringVar(self, "")
+        self.config_path = tk.StringVar(self, "")
         self.label1 = ttk.Label(self, text="", font=("Helvetica", 12))
         self.frame0 = ttk.Frame(self, width=240, borderwidth=1, relief="solid", padding=(2, 2))
         self.frame1 = ttk.Frame(self, width=100, borderwidth=1, relief="solid", padding=(2, 2))
@@ -41,7 +43,7 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
         self.tree.bind("<<TreeFilterUpdated>>", self.on_filter_updated)
         self.tree.bind("<<TreeCheckAllUpdated>>", self.on_check_all_updated)
         self.tree.bind("<<TreeToggleCell>>", self.on_toggle_cell)
-        self.json_str = ""
+
         self.scrollbar = ttk.Scrollbar(self.frame1, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=self.scrollbar.set)
         self.create_widgets()
@@ -129,6 +131,9 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
         """
         db_path = filedialog.askopenfilename(filetypes=[("MS Access files", "*.mdb, *.accdb")])
         self.db_path.set(db_path)
+        self.update_widgets()
+
+    def update_widgets(self):
         self.label1['text'] = f"MS Access database for export: \"{self.db_path.get().split('/')[-1]}\""
         self.label1.update()
         self.db_connect()
@@ -245,11 +250,20 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
         return final_list, upload_list, output_sql_path
 
     def save_config(self):
-        df = self.tree.df
-        self.json_str = df.to_json()
+        config = {
+            "db_path": self.db_path.get(),
+            "tree": self.tree.df.to_dict()
+        }
+        with open('config.json', 'w') as f:
+            json.dump(config, f, indent = 4)
+
 
     def load_config(self):
-        self.tree.df =pd.read_json(io.StringIO(self.json_str))
+        with open('config.json', 'r') as f:
+            config = json.load(f)
+        self.db_path.set(config["db_path"])
+        self.update_widgets()
+        self.tree.df = self.tree.df.from_dict(config["tree"])
         self.tree.rebuild_tree()
         self.update_column_style()
 
