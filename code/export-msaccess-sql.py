@@ -52,15 +52,18 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
         self.rgrid(tk.Label(self, text="MS Access to SQL Export Tool", font=("Helvetica", 14)),
                    dict(row=0, column=0, columnspan=3, pady=5))
         self.rgrid(self.label1, dict(row=1, column=0, columnspan=3))
-        self.rgrid(tk.Button(self, text="MS Access File Open", command=self.btn_openf),
+        self.rgrid(tk.Button(self, text="MS Access File Open", command=self.btn_openf, font=("Helvetica", 11)),
                    dict(row=2, column=0, columnspan=2))
-        self.rgrid(tk.Button(self, text=" Exit ", command=self.btn_exit), dict(row=2, column=2, columnspan=2))
+        self.rgrid(tk.Button(self, text=" Exit ", command=self.btn_exit, font=("Helvetica", 11)),
+                   dict(row=2, column=2, columnspan=2))
         self.rgrid(self.frame1, dict(row=4, column=0, columnspan=3))
         self.rgrid(self.tree, dict(row=0, column=0, pady=5))
         self.rgrid(self.scrollbar, dict(row=0, column=3, sticky="ns"))
-        self.rgrid(tk.Button(self, text=" Save config ", command=self.save_config, font=("Helvetica", 12)),
+        self.rgrid(tk.Button(self, text=" Save config ", command=self.save_config, font=("Helvetica", 11)),
                    dict(row=5, column=0, ))
-        self.rgrid(tk.Button(self, text=" Load config ", command=self.load_config, font=("Helvetica", 12)),
+        self.rgrid(tk.Button(self, text=" Save config as ", command=self.save_config_as, font=("Helvetica", 11)),
+                   dict(row=5, column=1, ))
+        self.rgrid(tk.Button(self, text=" Load config ", command=self.load_config, font=("Helvetica", 11)),
                    dict(row=5, column=2, ))
         self.rgrid(tk.Button(self, text=" Run! ", command=self.btn_run, font=("Helvetica", 12)),
                    dict(row=6, column=0, columnspan=3, ))
@@ -131,14 +134,24 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
         self.db_path.set(db_path)
         self.update_widgets()
 
-    def save_config(self):
+    def save_config(self, file_path='config.json'):
         config = {
             "info": "MS Access to SQL Export configuration file",
             "db_path": self.db_path.get(),
             "tree": self.tree.df.to_dict()
         }
-        with open('config.json', 'w') as f:
+        with open(file_path, 'w') as f:
             json.dump(config, f, indent = 4)
+
+    def save_config_as(self):
+        file_path = filedialog.asksaveasfilename(
+            title="Save configuration as(",
+            defaultextension=".json",
+            initialfile="config.json",
+            filetypes=[("JSON files", "*.json")]
+        )
+        if file_path:
+            self.save_config(file_path)
 
     def load_config(self, fpath='config.json', loadbyinit = False):
         try:
