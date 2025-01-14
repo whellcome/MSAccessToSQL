@@ -33,8 +33,13 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
                 12: "Text"
             }}
         self.db_path = tk.StringVar(self, "")
+        self.sql_path = tk.StringVar(self, "")
         self.config_path = tk.StringVar(self, "")
-        self.label1 = ttk.Label(self, text="", font=("Helvetica", 12))
+        self.lable_frame = ttk.Frame(self, padding=(2, 2))
+        self.label_db_path = ttk.Label(self.lable_frame, text="MS Access database", font=("Helvetica", 12),
+                                       wraplength=650)
+        self.label_sql_path = ttk.Label(self.lable_frame, text="Exported SQL script:", font=("Helvetica", 12),
+                                        wraplength=650)
         self.frame0 = ttk.Frame(self, width=240, borderwidth=1, relief="solid", padding=(2, 2))
         self.frame1 = ttk.Frame(self, width=100, borderwidth=1, relief="solid", padding=(2, 2))
         self.tree = TreeviewDataFrame(self.frame1, columns=("table", "export", "data"), show="headings")
@@ -51,22 +56,26 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
         self.rgrid(self)
         self.rgrid(tk.Label(self, text="MS Access to SQL Export Tool", font=("Helvetica", 14)),
                    dict(row=0, column=0, columnspan=3, pady=5))
-        self.rgrid(self.label1, dict(row=1, column=0, columnspan=3))
+        self.rgrid(self.lable_frame, dict(row=1, column=0, columnspan=3))
+        self.rgrid(self.label_db_path, dict(row=0, column=0, columnspan=3, pady=5))
+        self.rgrid(self.label_sql_path, dict(row=1, column=0, columnspan=3, pady=5))
         self.rgrid(tk.Button(self, text="MS Access File Open", command=self.btn_openf, font=("Helvetica", 11)),
-                   dict(row=2, column=0, columnspan=2))
+                   dict(row=2, column=0))
+        self.rgrid(tk.Button(self, text="Save SQL script as...", command=self.btn_sql_path, font=("Helvetica", 11)),
+                   dict(row=2, column=1))
         self.rgrid(tk.Button(self, text=" Exit ", command=self.btn_exit, font=("Helvetica", 11)),
                    dict(row=2, column=2, columnspan=2))
         self.rgrid(self.frame1, dict(row=4, column=0, columnspan=3))
         self.rgrid(self.tree, dict(row=0, column=0, pady=5))
         self.rgrid(self.scrollbar, dict(row=0, column=3, sticky="ns"))
-        self.rgrid(tk.Button(self, text=" Save config ", command=self.save_config, font=("Helvetica", 11)),
+        self.rgrid(tk.Button(self, text=" Save default config ", command=self.save_config, font=("Helvetica", 11)),
                    dict(row=5, column=0, ))
-        self.rgrid(tk.Button(self, text=" Save config as ", command=self.save_config_as, font=("Helvetica", 11)),
+        self.rgrid(tk.Button(self, text=" Save config as... ", command=self.save_config_as, font=("Helvetica", 11)),
                    dict(row=5, column=1, ))
         self.rgrid(tk.Button(self, text=" Load config ", command=self.load_config, font=("Helvetica", 11)),
                    dict(row=5, column=2, ))
-        self.rgrid(tk.Button(self, text=" Run! ", command=self.btn_run, font=("Helvetica", 12)),
-                   dict(row=6, column=0, columnspan=3, ))
+        self.rgrid(tk.Button(self, text=" Run! ", command=self.btn_run, font=("Helvetica", 12, "bold")),
+                   dict(row=6, column=0, columnspan=3, pady=5))
 
     def recreate_widgets(self):
         self.rgrid(self.tree, dict(row=0, column=0, pady=5))
@@ -132,12 +141,24 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
         """
         db_path = filedialog.askopenfilename(filetypes=[("MS Access files", "*.mdb, *.accdb")])
         self.db_path.set(db_path)
-        self.update_widgets()
+        self.update_label_db()
+
+    def btn_sql_path(self):
+        """
+
+        """
+        sql_path = filedialog.asksaveasfilename(
+            filetypes=[("SQL script files", "*.sql")],
+            initialfile=self.get_output_sql_name()
+        )
+        self.sql_path.set(sql_path)
+        self.update_label_sql()
 
     def save_config(self, file_path='config.json'):
         config = {
             "info": "MS Access to SQL Export configuration file",
             "db_path": self.db_path.get(),
+            "sql_path": self.sql_path.get(),
             "tree": self.tree.df.to_dict()
         }
         with open(file_path, 'w') as f:
@@ -157,8 +178,10 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
         try:
             with open(fpath, 'r') as f:
                 config = json.load(f)
+
             if config['info'] and (config['info'] == "MS Access to SQL Export configuration file"):
                 self.db_path.set(config["db_path"])
+                self.sql_path.set(config["sql_path"])
                 self.update_widgets()
                 self.tree.df = self.tree.df.from_dict(config["tree"])
                 self.tree.rebuild_tree()
@@ -172,15 +195,20 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
             if fpath:
                 self.load_config(fpath)
 
-
-    def update_widgets(self):
+    def update_label_db(self):
         self.db_connect()
         if self.check_permissions():
-            self.label1['text'] = f"MS Access database for export: \"{self.db_path.get().split('/')[-1]}\""
-            self.label1.update()
+            self.label_db_path['text'] = f"MS Access database: \"{self.db_path.get().split('/')[-1]}\""
+            # self.label_db_path.update()
             self.make_tree()
             self.recreate_widgets()
 
+    def update_label_sql(self):
+        self.label_sql_path['text'] = f"Exported SQL script: {self.sql_path.get()}"
+
+    def update_widgets(self):
+        self.update_label_db()
+        self.update_label_sql()
 
     def show_permission_warning(self):
         def open_link(event):
@@ -251,6 +279,16 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
 
         return referenced_tables
 
+    def get_output_sql_name(self):
+        db_path = self.db_path.get()
+        if db_path:
+            expath = db_path.split('/')
+            fname = expath[-1]
+            catalog = "/".join(expath[:-1])
+            return f"{catalog}/{'_'.join(fname.split('.')[:-1])}.sql"
+        else:
+            return "AccessExport.sql"
+
     def resolve_dependencies(self, export_list):
         export_set = set(export_list)
         added_tables = set()
@@ -268,7 +306,7 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
 
         return list(export_set), list(added_tables)
 
-    def export_prepare(self):
+    def export_prepare(self, output_sql_path = ""):
         df = self.tree.df
         export_list = df[df.iloc[:, 1] == "✔"]["table"].to_list()
         upload_list = df[df.iloc[:, 2] == "✔"]["table"].to_list()
@@ -283,10 +321,8 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
             )
             if not messagebox.askyesno("Integrity Check", message):
                 return False
-        expath = self.db_path.get().split('/')
-        fname = expath[-1]
-        catalog = "/".join(expath[:-1])
-        output_sql_path = f"{catalog}/{'_'.join(fname.split('.')[:-1])}.sql"
+        if not output_sql_path:
+            output_sql_path = self.get_output_sql_name()
 
         return final_list, upload_list, output_sql_path
 
