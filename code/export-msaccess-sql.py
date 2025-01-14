@@ -44,6 +44,7 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
         self.scrollbar = ttk.Scrollbar(self.frame1, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=self.scrollbar.set)
         self.create_widgets()
+        self.load_config('config.json',True)
 
     def create_widgets(self):
         """Building the main widgets at the beginning of program execution"""
@@ -139,7 +140,7 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
         with open('config.json', 'w') as f:
             json.dump(config, f, indent = 4)
 
-    def load_config(self, fpath='config.json'):
+    def load_config(self, fpath='config.json', loadbyinit = False):
         try:
             with open(fpath, 'r') as f:
                 config = json.load(f)
@@ -148,10 +149,12 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
                 self.update_widgets()
                 self.tree.df = self.tree.df.from_dict(config["tree"])
                 self.tree.rebuild_tree()
-                self.update_column_style()
+                self.tree.all_checked_update()
             else:
                 raise
         except:
+            if loadbyinit:
+                return
             fpath = filedialog.askopenfilename(filetypes=[("JSON files", "*.json")])
             if fpath:
                 self.load_config(fpath)
