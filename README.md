@@ -5,7 +5,7 @@
 
 This project provides a Python-based utility to export the structure and data of MS Access databases (`.mdb`, `.accdb`) into an SQL script. The tool ensures the correct handling of table structures, primary keys, and foreign key relationships, allowing for a smooth migration to other SQL-based databases.
 
-![MS Access export tool](screenshots/access_sql_export_screen_00.jpg)
+![MS Access export tool](https://raw.githubusercontent.com/whellcome/MSAccessToSQL/e03aab63433e49e8dcef8de42879dfe68af4a748/access_sql_export.jpg)
 
 ## Features
 
@@ -63,6 +63,8 @@ This project relies on the `tkextras` module, which enhances functionality for w
 2. Use the file dialog to select your MS Access database file (`.mdb`, `.accdb`).
 3. The tool generates an SQL file with the full database structure and data.
 4. Review or modify the exported script as needed, then import it into your SQL database.
+
+![MS Access export tool](https://raw.githubusercontent.com/whellcome/MSAccessToSQL/e03aab63433e49e8dcef8de42879dfe68af4a748/access_sql_export_1.jpg)
 
 #### **Important Note: Access Permissions**
 
