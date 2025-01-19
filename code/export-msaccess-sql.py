@@ -10,6 +10,7 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
     """
     The main class of the program is responsible for constructing the form and interaction of elements
     """
+
     def __init__(self, render_params=None, *args, **options):
         """
         Initialization of the Frame, description of the main elements
@@ -49,42 +50,42 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
         self.scrollbar = ttk.Scrollbar(self.frame1, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscrollcommand=self.scrollbar.set)
         self.create_widgets()
-        self.load_config('config.json',True)
+        self.load_config('config.json', True)
 
     def create_widgets(self):
         """Building the main widgets at the beginning of program execution"""
-        self.rgrid(self)
-        self.rgrid(tk.Label(self, text="MS Access to SQL Export Tool", font=("Helvetica", 14)),
-                   dict(row=0, column=0, columnspan=3, pady=5))
-        self.rgrid(self.lable_frame, dict(row=1, column=0, columnspan=3))
-        self.rgrid(self.label_db_path, dict(row=0, column=0, columnspan=3, pady=5))
-        self.rgrid(self.label_sql_path, dict(row=1, column=0, columnspan=3, pady=5))
-        self.rgrid(tk.Button(self, text="MS Access File Open", command=self.btn_openf, font=("Helvetica", 11)),
-                   dict(row=2, column=0))
-        self.rgrid(tk.Button(self, text="Save SQL script as...", command=self.btn_sql_path, font=("Helvetica", 11)),
-                   dict(row=2, column=1))
-        self.rgrid(tk.Button(self, text=" Exit ", command=self.btn_exit, font=("Helvetica", 11)),
-                   dict(row=2, column=2, columnspan=2))
-        self.rgrid(self.frame1, dict(row=4, column=0, columnspan=3))
-        self.rgrid(self.tree, dict(row=0, column=0, pady=5))
-        self.rgrid(self.scrollbar, dict(row=0, column=3, sticky="ns"))
-        self.rgrid(tk.Button(self, text=" Save default config ", command=self.save_config, font=("Helvetica", 11)),
-                   dict(row=5, column=0, ))
-        self.rgrid(tk.Button(self, text=" Save config as... ", command=self.save_config_as, font=("Helvetica", 11)),
-                   dict(row=5, column=1, ))
-        self.rgrid(tk.Button(self, text=" Load config ", command=self.load_config, font=("Helvetica", 11)),
-                   dict(row=5, column=2, ))
-        self.rgrid(tk.Button(self, text=" Run! ", command=self.btn_run, font=("Helvetica", 12, "bold")),
-                   dict(row=6, column=0, columnspan=3, pady=5))
+        grid = self.rgrid
+        grid(self)
+        grid(tk.Label(self, text="MS Access to SQL Export Tool", font=("Helvetica", 14)),
+             dict(row=0, column=0, columnspan=3, pady=5))
+        grid(self.lable_frame, dict(row=1, column=0, columnspan=3))
+        grid(self.label_db_path, dict(row=0, column=0, columnspan=3, pady=5))
+        grid(self.label_sql_path, dict(row=1, column=0, columnspan=3, pady=5))
+        grid(tk.Button(self, text="MS Access File Open", command=self.btn_openf, font=("Helvetica", 11)),
+             dict(row=2, column=0))
+        grid(tk.Button(self, text="Save SQL script as...", command=self.btn_sql_path, font=("Helvetica", 11)),
+             dict(row=2, column=1))
+        grid(tk.Button(self, text=" Exit ", command=self.btn_exit, font=("Helvetica", 11)),
+             dict(row=2, column=2, columnspan=2))
+        grid(self.frame1, dict(row=4, column=0, columnspan=3))
+        grid(self.tree, dict(row=0, column=0, pady=5))
+        grid(self.scrollbar, dict(row=0, column=3, sticky="ns"))
+        grid(tk.Button(self, text=" Save default config ", command=self.save_config, font=("Helvetica", 11)),
+             dict(row=5, column=0, ))
+        grid(tk.Button(self, text=" Save config as... ", command=self.save_config_as, font=("Helvetica", 11)),
+             dict(row=5, column=1, ))
+        grid(tk.Button(self, text=" Load config ", command=self.load_config, font=("Helvetica", 11)),
+             dict(row=5, column=2, ))
+        grid(tk.Button(self, text=" Run! ", command=self.btn_run, font=("Helvetica", 12, "bold")),
+             dict(row=6, column=0, columnspan=3, pady=5))
 
     def recreate_widgets(self):
-        self.rgrid(self.tree, dict(row=0, column=0, pady=5))
-        self.rgrid(self.scrollbar, dict(row=0, column=3, sticky="ns"))
-        self.rgrid(self.frame0, dict(row=3, column=0, columnspan=3, sticky="e"))
-        self.rgrid(self.tree.filter_widget(self.frame0),
-                   dict(row=0, column=0, columnspan=3, padx=5, pady=5, sticky="ew"))
-        self.rgrid(self.tree.checkbox_widget(self.frame0),
-                   dict(row=4, column=0, columnspan=3, padx=5, pady=5, sticky="e"))
+        grid = self.rgrid
+        grid(self.tree, dict(row=0, column=0, pady=5))
+        grid(self.scrollbar, dict(row=0, column=3, sticky="ns"))
+        grid(self.frame0, dict(row=3, column=0, columnspan=3, sticky="e"))
+        grid(self.tree.filter_widget(self.frame0), dict(row=0, column=0, columnspan=3, padx=5, pady=5, sticky="ew"))
+        grid(self.tree.checkbox_widget(self.frame0), dict(row=4, column=0, columnspan=3, padx=5, pady=5, sticky="e"))
 
     def make_tree(self):
         self.tree.heading("table", text="Table")
@@ -162,7 +163,7 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
             "tree": self.tree.df.to_dict()
         }
         with open(file_path, 'w') as f:
-            json.dump(config, f, indent = 4)
+            json.dump(config, f, indent=4)
 
     def save_config_as(self):
         file_path = filedialog.asksaveasfilename(
@@ -174,7 +175,7 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
         if file_path:
             self.save_config(file_path)
 
-    def load_config(self, fpath='config.json', loadbyinit = False):
+    def load_config(self, fpath='config.json', loadbyinit=False):
         try:
             with open(fpath, 'r') as f:
                 config = json.load(f)
@@ -306,7 +307,7 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
 
         return list(export_set), list(added_tables)
 
-    def export_prepare(self, output_sql_path = ""):
+    def export_prepare(self, output_sql_path=""):
         df = self.tree.df
         export_list = df[df.iloc[:, 1] == "✔"]["table"].to_list()
         upload_list = df[df.iloc[:, 2] == "✔"]["table"].to_list()
@@ -327,7 +328,7 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
         return final_list, upload_list, output_sql_path
 
     def export(self):
-        export_lists = self.export_prepare()
+        export_lists = self.export_prepare(self.sql_path.get())
         if not export_lists:
             return
 
