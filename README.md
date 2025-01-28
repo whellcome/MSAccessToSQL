@@ -54,7 +54,7 @@ This project relies on the `tkextras` module, which enhances functionality for w
 
 
    ```bash
-   pip install git+https://github.com/whellcome/tkextras.git
+   pip install tkextras
    ```
 
 ## Usage
