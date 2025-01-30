@@ -145,9 +145,6 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
         self.update_label_db()
 
     def btn_sql_path(self):
-        """
-
-        """
         sql_path = filedialog.asksaveasfilename(
             filetypes=[("SQL script files", "*.sql")],
             initialfile=self.get_output_sql_name()
@@ -200,7 +197,6 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
         self.db_connect()
         if self.check_permissions():
             self.label_db_path['text'] = f"MS Access database: \"{self.db_path.get().split('/')[-1]}\""
-            # self.label_db_path.update()
             self.make_tree()
             self.recreate_widgets()
 
@@ -222,22 +218,23 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
         warning_window.geometry("345x185")
         warning_window.resizable(False, False)
         spad = 7
-        self.rgrid(ttk.Label(warning_window, text="Access Permission Error", font=("Helvetica", 14)),
-                   dict(row=0, column=0, pady=spad, columnspan=3, sticky="ns"))
+        grid = self.rgrid
+        grid(ttk.Label(warning_window, text="Access Permission Error", font=("Helvetica", 14)),
+             dict(row=0, column=0, pady=spad, columnspan=3, sticky="ns"))
         message = (
             "The MS Access Export Tool requires access to system tables "
             "MSysObjects and MSysRelationships. Please refer to the "
             "documentation for steps to grant the necessary permissions."
         )
-        self.rgrid(ttk.Label(warning_window, text=message, wraplength=350, justify="center"),
-                   dict(row=1, column=0, columnspan=3, pady=spad))
+        grid(ttk.Label(warning_window, text=message, wraplength=350, justify="center"),
+             dict(row=1, column=0, columnspan=3, pady=spad))
         link = ttk.Label(
             warning_window, text="Click here for documentation", foreground="blue", cursor="hand2"
         )
-        self.rgrid(link, dict(row=2, column=0, columnspan=3, pady=spad, sticky="ns"))
+        grid(link, dict(row=2, column=0, columnspan=3, pady=spad, sticky="ns"))
         link.bind("<Button-1>", open_link)
-        self.rgrid(tk.Button(warning_window, text=" Close ", command=warning_window.destroy),
-                   dict(row=3, column=1, pady=spad))
+        grid(tk.Button(warning_window, text=" Close ", command=warning_window.destroy),
+             dict(row=3, column=1, pady=spad))
         warning_window.transient()
         warning_window.grab_set()
         warning_window.mainloop()
