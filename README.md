@@ -31,7 +31,7 @@ This tool is ideal for professionals who deal with MS Access databases and need 
 1. [x] **[Command-line Execution (#16)](https://github.com/whellcome/MSAccessToSQL/issues/16)** (In process)  
    - Automate the export process to support batch jobs and integration with enterprise ETL pipelines. Ideal for organizations heavily reliant on MS Access databases.
 
-2. **[Save and Load Configurations (#17)](https://github.com/whellcome/MSAccessToSQL/issues/17)** (Done) 
+2. [x] **[Save and Load Configurations (#17)](https://github.com/whellcome/MSAccessToSQL/issues/17)** (Done) 
    - Add functionality to save the current export setup (e.g., database path, selected tables) and reload it in future sessions, enabling quick and consistent operations.
 
 ----
