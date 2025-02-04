@@ -6,7 +6,7 @@ from tkextras import *
 import json
 import argparse
 
-parser = argparse.ArgumentParser()
+parser = argparse.ArgumentParser(description="MS Access to SQL Export Tool")
 
 class GetWidgetsFrame(WidgetsRender, ttk.Frame):
     """
@@ -175,6 +175,7 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
             self.save_config(file_path)
 
     def load_config(self, fpath='config.json', loadbyinit=False):
+
         try:
             with open(fpath, 'r') as f:
                 config = json.load(f)
@@ -306,13 +307,13 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
 
         return list(export_set), list(added_tables)
 
-    def export_prepare(self, output_sql_path=""):
+    def export_prepare(self, output_sql_path="", mode=""):
         df = self.tree.df
         export_list = df[df.iloc[:, 1] == "✔"]["table"].to_list()
         upload_list = df[df.iloc[:, 2] == "✔"]["table"].to_list()
         final_list, added_tables = self.resolve_dependencies(export_list)
 
-        if added_tables:
+        if added_tables and mode != "cmd":
             added_tables_str = "\n".join(added_tables)
             message = (
                 "The following tables were added to ensure database integrity:\n\n"
@@ -326,8 +327,8 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
 
         return final_list, upload_list, output_sql_path
 
-    def export(self):
-        export_lists = self.export_prepare(self.sql_path.get())
+    def export(self, mode=""):
+        export_lists = self.export_prepare(self.sql_path.get(), mode=mode)
         if not export_lists:
             return
 
@@ -397,21 +398,36 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
                         recordset.MoveNext()
                     recordset.Close()
                     sql_file.write("\n);\n\n")
-
-            messagebox.showinfo("SQL export completed!", f"File saved as {export_lists[2]}")
+            if mode == "cmd":
+                print("SQL export completed!", f"File saved as {export_lists[2]}", sep="\n")
+            else:
+                messagebox.showinfo("SQL export completed!", f"File saved as {export_lists[2]}")
 
 def main():
-    parser.add_argument("--config", type=str, help="Path to config file")
+    parser.add_argument("-c","--config", type=str, help="Path to config file")
     args = parser.parse_args()
 
     if args.config:
+        log_list = []
+        fconf = args.config
+        log_list.append(f"configuration's became: {fconf}")
         root.withdraw()
+        app = GetWidgetsFrame(master=root)
+        log_list.append(f"App started: {app.master.title()}")
+        app.load_config(args.config)
+        log_list.append(f"configuration uploaded:")
+        log_list.append(f"\t db path: {app.db_path.get()}")
+        log_list.append(f"\t sql path: {app.sql_path.get()}")
+        print("\n".join(log_list))
+        app.export(mode="cmd")
+        app.btn_exit()
+
     else:
-        root.title("MS Access Export")
         app = GetWidgetsFrame(master=root, padding=(2, 2))
         app.mainloop()
 
 
 if __name__ == "__main__":
     root = tk.Tk()
+    root.title("MS Access Export")
     main()
