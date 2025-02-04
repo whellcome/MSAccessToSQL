@@ -28,15 +28,13 @@ This tool is ideal for professionals who deal with MS Access databases and need 
 
 ### Related Issues:
 
-1. **[Command-line Execution (#16)](https://github.com/whellcome/MSAccessToSQL/issues/16)**  
+1. [x] **[Command-line Execution (#16)](https://github.com/whellcome/MSAccessToSQL/issues/16)** (In process)  
    - Automate the export process to support batch jobs and integration with enterprise ETL pipelines. Ideal for organizations heavily reliant on MS Access databases.
 
-2. **[Save and Load Configurations (#17)](https://github.com/whellcome/MSAccessToSQL/issues/17)**  
+2. **[Save and Load Configurations (#17)](https://github.com/whellcome/MSAccessToSQL/issues/17)** (Done) 
    - Add functionality to save the current export setup (e.g., database path, selected tables) and reload it in future sessions, enabling quick and consistent operations.
 
-Here’s the "Important" section translated into English:
-
----
+----
 
 ## Install
 
@@ -65,6 +63,52 @@ This project relies on the `tkextras` module, which enhances functionality for w
 4. Review or modify the exported script as needed, then import it into your SQL database.
 
 ![MS Access export tool](https://raw.githubusercontent.com/whellcome/MSAccessToSQL/e03aab63433e49e8dcef8de42879dfe68af4a748/access_sql_export_1.jpg)
+
+### **Command Line Usage Instructions**
+
+The **MS Access to SQL Export Tool** supports both **graphical mode** and **command-line execution** for automated
+exports.
+
+---
+
+### **🔹 Initial Setup (Graphical Mode)**
+
+To configure your export settings, follow these steps:
+
+1. **Run the script** without parameters to launch the graphical interface:
+   ```sh
+   python export-msaccess-sql.py
+   ```
+2. **Select an MS Access database** (`.mdb` or `.accdb`) and choose (check) the tables for:
+    - **Table export** (Structure schema)
+    - **Data export** (records)
+3. **Save your configuration** to a file for future use.
+
+---
+
+### **🔹 Automated Export (Command-Line Mode)**
+
+Once a configuration file is created, the export process can be executed without user interaction.
+
+- **Run the script with the `-c` or `--config` parameter** to specify the configuration file:
+  ```sh
+  python export-msaccess-sql.py -c my_config.json
+  ```
+ 
+- The script will **automatically load the configuration** and **execute the export**.
+- The **execution log** is displayed in the console.
+
+---
+
+### **📌 Notes**
+
+- Ensure the configuration file **is valid** and contains correct database paths.
+- If the configuration includes **Table (structure schema) selections**, the export will process those and related tables.
+- If running on Windows, you can create a **batch script (`.bat`)** for scheduled execution.
+
+💡 This feature allows **data engineers** and **database administrators** to integrate the tool into **ETL pipelines**
+and **automate migration processes**. 🚀
+
 
 #### **Important Note: Access Permissions**
 
