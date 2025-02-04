@@ -4,7 +4,9 @@ import webbrowser
 import win32com.client
 from tkextras import *
 import json
+import argparse
 
+parser = argparse.ArgumentParser()
 
 class GetWidgetsFrame(WidgetsRender, ttk.Frame):
     """
@@ -398,9 +400,18 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
 
             messagebox.showinfo("SQL export completed!", f"File saved as {export_lists[2]}")
 
+def main():
+    parser.add_argument("--config", type=str, help="Path to config file")
+    args = parser.parse_args()
+
+    if args.config:
+        root.withdraw()
+    else:
+        root.title("MS Access Export")
+        app = GetWidgetsFrame(master=root, padding=(2, 2))
+        app.mainloop()
+
 
 if __name__ == "__main__":
     root = tk.Tk()
-    root.title("MS Access Export")
-    app = GetWidgetsFrame(master=root, padding=(2, 2))
-    app.mainloop()
+    main()
