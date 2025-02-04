@@ -5,6 +5,7 @@ import win32com.client
 from tkextras import *
 import json
 import argparse
+from datetime import datetime
 
 parser = argparse.ArgumentParser(description="MS Access to SQL Export Tool")
 
@@ -399,7 +400,7 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
                     recordset.Close()
                     sql_file.write("\n);\n\n")
             if mode == "cmd":
-                print("SQL export completed!", f"File saved as {export_lists[2]}", sep="\n")
+                print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - SQL export completed!", f"File saved as {export_lists[2]}", sep="\n")
             else:
                 messagebox.showinfo("SQL export completed!", f"File saved as {export_lists[2]}")
 
@@ -410,14 +411,15 @@ def main():
     if args.config:
         log_list = []
         conf = args.config
-        log_list.append(f"configuration's became: {conf}")
+        log_list.append(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - Configuration`s accepted: {conf}")
         root.withdraw()
         app = GetWidgetsFrame(master=root)
-        log_list.append(f"App started: {app.master.title()}")
+        log_list.append(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - App started: {app.master.title()}")
         app.load_config(conf)
-        log_list.append(f"configuration uploaded:")
+        log_list.append(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - Configuration`s uploaded:")
         log_list.append(f"\t db path: {app.db_path.get()}")
         log_list.append(f"\t sql path: {app.sql_path.get()}")
+        log_list.append(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - Export execution...")
         print("\n".join(log_list))
         app.export(mode="cmd")
         app.btn_exit()
