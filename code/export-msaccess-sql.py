@@ -409,12 +409,12 @@ def main():
 
     if args.config:
         log_list = []
-        fconf = args.config
-        log_list.append(f"configuration's became: {fconf}")
+        conf = args.config
+        log_list.append(f"configuration's became: {conf}")
         root.withdraw()
         app = GetWidgetsFrame(master=root)
         log_list.append(f"App started: {app.master.title()}")
-        app.load_config(args.config)
+        app.load_config(conf)
         log_list.append(f"configuration uploaded:")
         log_list.append(f"\t db path: {app.db_path.get()}")
         log_list.append(f"\t sql path: {app.sql_path.get()}")
