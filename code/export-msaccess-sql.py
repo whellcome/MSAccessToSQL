@@ -38,12 +38,15 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
             }}
         self.db_path = tk.StringVar(self, "")
         self.sql_path = tk.StringVar(self, "")
+        self.log_path = tk.StringVar(self, "")
         self.config_path = tk.StringVar(self, "")
         self.lable_frame = ttk.Frame(self, padding=(2, 2))
         self.label_db_path = ttk.Label(self.lable_frame, text="MS Access database", font=("Helvetica", 12),
                                        wraplength=650)
         self.label_sql_path = ttk.Label(self.lable_frame, text="Exported SQL script:", font=("Helvetica", 12),
                                         wraplength=650)
+        self.log_frame = ttk.Frame(self, borderwidth=1, relief="solid", padding=(2, 2))
+        self.label_log_path = ttk.Label(self.log_frame, text="...", font=("Helvetica", 12), wraplength=650)
         self.frame0 = ttk.Frame(self, width=240, borderwidth=1, relief="solid", padding=(2, 2))
         self.frame1 = ttk.Frame(self, width=100, borderwidth=1, relief="solid", padding=(2, 2))
         self.tree = TreeviewDataFrame(self.frame1, columns=("table", "export", "data"), show="headings")
@@ -56,7 +59,11 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
         self.load_config('config.json', True)
 
     def create_widgets(self):
-        """Building the main widgets at the beginning of program execution"""
+        """
+        Building the main widgets at the beginning of program execution
+        Returns:
+
+        """
         grid = self.rgrid
         grid(self)
         grid(tk.Label(self, text="MS Access to SQL Export Tool", font=("Helvetica", 14)),
@@ -79,8 +86,15 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
              dict(row=5, column=1, ))
         grid(tk.Button(self, text=" Load config ", command=self.load_config, font=("Helvetica", 11)),
              dict(row=5, column=2, ))
+        grid(self.log_frame, dict(row=6, column=0, columnspan=3, pady=5))
+        self.log_frame.grid_columnconfigure(1, weight=1)
+        grid(tk.Button(self.log_frame, text=" Logging in file: ", command=self.btn_log, font=("Helvetica", 11)),
+             dict(row=0, column=0, pady=5))
+        grid(self.label_log_path, dict(row=0, column=1, pady=5))
+        grid(tk.Button(self.log_frame, text="X", command=self.btn_log_delete, font=("Helvetica", 11)),
+             dict(row=0, column=2, padx=5, pady=5, sticky="e"))
         grid(tk.Button(self, text=" Run! ", command=self.btn_run, font=("Helvetica", 12, "bold")),
-             dict(row=6, column=0, columnspan=3, pady=5))
+             dict(row=7, column=0, columnspan=3, pady=5))
 
     def recreate_widgets(self):
         grid = self.rgrid
@@ -119,6 +133,14 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
                 self.tree.item(item_id, tags=("normal",))
 
     def on_filter_updated(self, event):
+        """
+
+        Args:
+            event:
+
+        Returns:
+
+        """
         pass
 
     def on_check_all_updated(self, event):
@@ -127,6 +149,18 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
     def on_toggle_cell(self, event):
         """Handles cell clicks to change flags."""
         self.update_column_style()
+
+    def btn_log(self):
+        log_path = filedialog.asksaveasfilename(
+            filetypes=[("Log files", "*.log")],
+            initialfile="export-msaccess-sql.log"
+        )
+        self.log_path.set(log_path)
+        self.update_label_log()
+
+    def btn_log_delete(self):
+        self.log_path.set("")
+        self.update_label_log()
 
     def btn_run(self):
         """
@@ -160,6 +194,7 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
             "info": "MS Access to SQL Export configuration file",
             "db_path": self.db_path.get(),
             "sql_path": self.sql_path.get(),
+            "log_path": self.log_path.get(),
             "tree": self.tree.df.to_dict()
         }
         with open(file_path, 'w') as f:
@@ -181,9 +216,11 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
             with open(fpath, 'r') as f:
                 config = json.load(f)
 
-            if config['info'] and (config['info'] == "MS Access to SQL Export configuration file"):
+            if ('info' in config) and (config['info'] == "MS Access to SQL Export configuration file"):
                 self.db_path.set(config["db_path"])
                 self.sql_path.set(config["sql_path"])
+                if "log_path" in config:
+                    self.log_path.set(config["log_path"])
                 self.update_widgets()
                 self.tree.df = self.tree.df.from_dict(config["tree"])
                 self.tree.rebuild_tree()
@@ -207,9 +244,13 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
     def update_label_sql(self):
         self.label_sql_path['text'] = f"Exported SQL script: {self.sql_path.get()}"
 
+    def update_label_log(self):
+        self.label_log_path['text'] = f"{self.log_path.get()}"
+
     def update_widgets(self):
         self.update_label_db()
         self.update_label_sql()
+        self.update_label_log()
 
     def show_permission_warning(self):
         def open_link(event):
