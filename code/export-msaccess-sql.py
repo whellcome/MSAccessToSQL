@@ -6,6 +6,7 @@ from tkextras import *
 import json
 import argparse
 from datetime import datetime
+from logger_cfg import logger, enable_file_logging
 
 parser = argparse.ArgumentParser(description="MS Access to SQL Export Tool")
 
@@ -14,7 +15,7 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
     The main class of the program is responsible for constructing the form and interaction of elements
     """
 
-    def __init__(self, render_params=None, *args, **options):
+    def __init__(self, render_params=None, mode="", *args, **options):
         """
         Initialization of the Frame, description of the main elements
         :param render_params: General parameters for the arrangement of elements can be set externally
@@ -36,6 +37,7 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
                 11: "Binary",
                 12: "Text"
             }}
+        self.mode = tk.StringVar(self, mode)
         self.db_path = tk.StringVar(self, "")
         self.sql_path = tk.StringVar(self, "")
         self.log_path = tk.StringVar(self, "")
@@ -221,14 +223,22 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
                 self.sql_path.set(config["sql_path"])
                 if "log_path" in config:
                     self.log_path.set(config["log_path"])
+                    if self.mode.get() == "cmd":
+                        enable_file_logging(self.log_path.get())
+                        logger.info(f"Logging in file {self.log_path.get()} enabled")
                 self.update_widgets()
                 self.tree.df = self.tree.df.from_dict(config["tree"])
                 self.tree.rebuild_tree()
                 self.tree.all_checked_update()
+                if self.mode.get() == "cmd":
+                    logger.info(f"Configuration`s uploaded: {fpath}")
             else:
                 raise
         except:
             if loadbyinit:
+                return
+            if self.mode.get() == "cmd":
+                logger.error(f"Configuration upload fail: {self.config_path.get()}")
                 return
             fpath = filedialog.askopenfilename(filetypes=[("JSON files", "*.json")])
             if fpath:
@@ -289,7 +299,13 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
         if not db_path:
             return None
         engine = win32com.client.Dispatch("DAO.DBEngine.120")
-        self.db = engine.OpenDatabase(db_path)
+        try:
+            self.db = engine.OpenDatabase(db_path)
+            if self.mode.get() == "cmd":
+                logger.info(f"DB connected: {db_path}")
+        except Exception as e:
+            if self.mode.get() == "cmd":
+                logger.error(f"OpenDatabase({db_path}) failed: {e}")
 
     def check_permissions(self):
         try:
@@ -349,13 +365,13 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
 
         return list(export_set), list(added_tables)
 
-    def export_prepare(self, output_sql_path="", mode=""):
+    def export_prepare(self, output_sql_path=""):
         df = self.tree.df
         export_list = df[df.iloc[:, 1] == "✔"]["table"].to_list()
         upload_list = df[df.iloc[:, 2] == "✔"]["table"].to_list()
         final_list, added_tables = self.resolve_dependencies(export_list)
 
-        if added_tables and mode != "cmd":
+        if added_tables and self.mode.get() != "cmd":
             added_tables_str = "\n".join(added_tables)
             message = (
                 "The following tables were added to ensure database integrity:\n\n"
@@ -364,18 +380,23 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
             )
             if not messagebox.askyesno("Integrity Check", message):
                 return False
+        elif self.mode.get() == "cmd":
+            logger.info(f"Depended tables were added: {', '.join(added_tables)}")
+
         if not output_sql_path:
             output_sql_path = self.get_output_sql_name()
 
         return final_list, upload_list, output_sql_path
 
-    def export(self, mode=""):
-        export_lists = self.export_prepare(self.sql_path.get(), mode=mode)
+    def export(self):
+        export_lists = self.export_prepare(self.sql_path.get())
         if not export_lists:
             return
 
         with (open(export_lists[2], "w", encoding="utf-8") as sql_file):
             for tab_name in export_lists[0]:
+                if self.mode.get() == "cmd":
+                    logger.info(f"Export table structure: {tab_name}.")
                 table = self.db.TableDefs(tab_name)
                 sql_file.write(f"-- Table: {table.Name}\n")
                 sql_file.write(f"CREATE TABLE '{table.Name}' (\n")
@@ -419,6 +440,8 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
                 sql_file.write("\n);\n\n")
 
                 if table.Name in export_lists[1]:
+                    if self.mode.get() == "cmd":
+                        logger.info(f"Export data from: {tab_name}.")
                     ref_columns = [field.Name for field in table.Fields]
                     sql_file.write(f"-- Filling data for {table.Name}\n")
                     sql_file.write(f"INSERT INTO '{table.Name}' ({', '.join(ref_columns)}) VALUES\n")
@@ -440,31 +463,24 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
                         recordset.MoveNext()
                     recordset.Close()
                     sql_file.write("\n);\n\n")
-            if mode == "cmd":
-                print(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - SQL export completed!", f"File saved as {export_lists[2]}", sep="\n")
+                if self.mode.get() == "cmd":
+                    logger.info(f"Table {tab_name} export complete.")
+            if self.mode.get() == "cmd":
+                logger.info(f"SQL export completed!")
             else:
                 messagebox.showinfo("SQL export completed!", f"File saved as {export_lists[2]}")
+
 
 def main():
     parser.add_argument("-c","--config", type=str, help="Path to config file")
     args = parser.parse_args()
-
     if args.config:
-        log_list = []
         conf = args.config
-        log_list.append(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - Configuration`s accepted: {conf}")
         root.withdraw()
-        app = GetWidgetsFrame(master=root)
-        log_list.append(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - App started: {app.master.title()}")
+        app = GetWidgetsFrame(master=root, mode="cmd")
         app.load_config(conf)
-        log_list.append(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - Configuration`s uploaded:")
-        log_list.append(f"\t db path: {app.db_path.get()}")
-        log_list.append(f"\t sql path: {app.sql_path.get()}")
-        log_list.append(f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')} - Export execution...")
-        print("\n".join(log_list))
-        app.export(mode="cmd")
+        app.export()
         app.btn_exit()
-
     else:
         app = GetWidgetsFrame(master=root, padding=(2, 2))
         app.mainloop()
