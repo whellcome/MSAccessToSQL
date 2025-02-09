@@ -232,6 +232,7 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
                 self.tree.all_checked_update()
                 if self.mode.get() == "cmd":
                     logger.info(f"Configuration`s uploaded: {fpath}")
+                return True
             else:
                 raise
         except:
@@ -239,7 +240,7 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
                 return
             if self.mode.get() == "cmd":
                 logger.error(f"Configuration upload fail: {self.config_path.get()}")
-                return
+                return False
             fpath = filedialog.askopenfilename(filetypes=[("JSON files", "*.json")])
             if fpath:
                 self.load_config(fpath)
@@ -314,8 +315,12 @@ class GetWidgetsFrame(WidgetsRender, ttk.Frame):
             recordset = self.db.OpenRecordset("SELECT TOP 1 * FROM MSysRelationships")
             recordset.Close()
             return True
-        except:
-            self.show_permission_warning()
+        except Exception as e:
+            if self.mode.get() == "cmd":
+                logger.error(f"Permissions test failed: {e}")
+                raise
+            else:
+                self.show_permission_warning()
             return False
 
     def get_referenced_tables(self, table_name):
@@ -478,8 +483,8 @@ def main():
         conf = args.config
         root.withdraw()
         app = GetWidgetsFrame(master=root, mode="cmd")
-        app.load_config(conf)
-        app.export()
+        if app.load_config(conf):
+            app.export()
         app.btn_exit()
     else:
         app = GetWidgetsFrame(master=root, padding=(2, 2))
