@@ -79,14 +79,15 @@ To configure your export settings, follow these steps:
    ```sh
    python export-msaccess-sql.py
    ```
-2. **Select an MS Access database** (`.mdb` or `.accdb`) and choose (check) the tables for:
+2. **Select an MS Access database** (`.mdb` or `.accdb`) and **[SQL script]**, choose (check) the tables for:
     - **Table export** (Structure schema)
     - **Data export** (records)
-3. **Save your configuration** to a file for future use.
+3. **[Select a logging file]** If specified, logging is duplicated to the file.
+4. **Save your configuration** to a file for use in **command line** mode.
 
 ---
 
-### **🔹 Automated Export (Command-Line Mode)**
+### **🔹 Automated Export (Command Line Mode)**
 
 Once a configuration file is created, the export process can be executed without user interaction.
 
@@ -97,6 +98,7 @@ Once a configuration file is created, the export process can be executed without
  
 - The script will **automatically load the configuration** and **execute the export**.
 - The **execution log** is displayed in the console.
+- If a **logging file** specified, logging is duplicated to the file
 
 ---
 
